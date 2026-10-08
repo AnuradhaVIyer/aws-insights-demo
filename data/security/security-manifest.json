@@ -1,0 +1,143 @@
+{
+ "schema": "1.0",
+ "customer": "Sample Company",
+ "scans": [
+  {
+   "date": "2026-07-19",
+   "file": "security-2026-07-19.json"
+  },
+  {
+   "date": "2026-07-26",
+   "file": "security-2026-07-26.json"
+  },
+  {
+   "date": "2026-08-02",
+   "file": "security-2026-08-02.json"
+  },
+  {
+   "date": "2026-08-09",
+   "file": "security-2026-08-09.json"
+  },
+  {
+   "date": "2026-08-16",
+   "file": "security-2026-08-16.json"
+  },
+  {
+   "date": "2026-08-23",
+   "file": "security-2026-08-23.json"
+  },
+  {
+   "date": "2026-08-30",
+   "file": "security-2026-08-30.json"
+  },
+  {
+   "date": "2026-09-06",
+   "file": "security-2026-09-06.json"
+  },
+  {
+   "date": "2026-09-13",
+   "file": "security-2026-09-13.json"
+  },
+  {
+   "date": "2026-09-20",
+   "file": "security-2026-09-20.json"
+  },
+  {
+   "date": "2026-09-27",
+   "file": "security-2026-09-27.json"
+  },
+  {
+   "date": "2026-10-04",
+   "file": "security-2026-10-04.json"
+  }
+ ],
+ "history": [
+  {
+   "date": "2026-07-19",
+   "score": 47,
+   "open": 22,
+   "critical": 4,
+   "high": 6
+  },
+  {
+   "date": "2026-07-26",
+   "score": 48,
+   "open": 21,
+   "critical": 4,
+   "high": 6
+  },
+  {
+   "date": "2026-08-02",
+   "score": 50,
+   "open": 20,
+   "critical": 4,
+   "high": 5
+  },
+  {
+   "date": "2026-08-09",
+   "score": 52,
+   "open": 19,
+   "critical": 3,
+   "high": 5
+  },
+  {
+   "date": "2026-08-16",
+   "score": 52,
+   "open": 18,
+   "critical": 3,
+   "high": 5
+  },
+  {
+   "date": "2026-08-23",
+   "score": 56,
+   "open": 16,
+   "critical": 3,
+   "high": 4
+  },
+  {
+   "date": "2026-08-30",
+   "score": 58,
+   "open": 15,
+   "critical": 2,
+   "high": 4
+  },
+  {
+   "date": "2026-09-06",
+   "score": 60,
+   "open": 14,
+   "critical": 2,
+   "high": 3
+  },
+  {
+   "date": "2026-09-13",
+   "score": 61,
+   "open": 12,
+   "critical": 2,
+   "high": 3
+  },
+  {
+   "date": "2026-09-20",
+   "score": 64,
+   "open": 11,
+   "critical": 2,
+   "high": 2
+  },
+  {
+   "date": "2026-09-27",
+   "score": 67,
+   "open": 9,
+   "critical": 1,
+   "high": 2
+  },
+  {
+   "date": "2026-10-04",
+   "score": 69,
+   "open": 8,
+   "critical": 1,
+   "high": 1
+  }
+ ],
+ "source": "demo",
+ "latest": "security-2026-10-04.json",
+ "updated_at": "2026-10-04T02:00:00+00:00"
+}

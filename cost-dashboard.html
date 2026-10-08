@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWS Cost Meter — Demo</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F3F5FB; --bg-dot: rgba(124,92,252,0.07);
+    --panel:#FFFFFF; --panel-2:#F8F9FE; --border:#E4E8F2;
+    --text:#14162B; --text-dim:#6B7280; --text-faint:#9CA3AF;
+    --purple:#7C5CFC; --grad: linear-gradient(90deg, #7C3AED, #3B82F6 55%, #22D3EE);
+    --good:#16A34A; --danger:#DC2626; --warn:#D97706;
+    --shadow: 0 1px 2px rgba(20,22,43,0.04), 0 8px 24px rgba(20,22,43,0.05);
+    --mono:'IBM Plex Mono', monospace; --sans:'Inter', sans-serif;
+  }
+  [data-theme="dark"]{
+    --bg:#0B0D1A; --bg-dot: rgba(124,92,252,0.10);
+    --panel:#12142A; --panel-2:#181B36; --border:#262A4A;
+    --text:#EDEFFB; --text-dim:#9AA0C7; --text-faint:#666C99;
+    --good:#34D399; --danger:#F87171; --warn:#FBBF24;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--bg); color:var(--text); font-family:var(--sans); min-height:100vh;
+    background-image: radial-gradient(var(--bg-dot) 1px, transparent 1px); background-size:22px 22px;
+  }
+  .topbar{background:var(--grad); padding:14px 32px; color:#fff;}
+  .topbar-msg{font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px; max-width:1280px; margin:0 auto;}
+  .topbar-msg span.dim{font-weight:400; opacity:.9;}
+
+  header{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:16px 32px; border-bottom:1px solid var(--border); background:var(--panel);
+    flex-wrap:wrap; gap:14px;
+  }
+  .brand{display:flex; align-items:center; gap:12px;}
+  .logo{
+    width:40px; height:40px; border-radius:11px; background:var(--grad);
+    display:flex; align-items:center; justify-content:center; color:#fff; font-family:var(--mono); font-weight:700; font-size:15px;
+    box-shadow: var(--shadow);
+  }
+  .brand-text h1{font-size:19px; font-weight:800; letter-spacing:-0.02em;}
+
+  .header-controls{display:flex; align-items:center; gap:10px;}
+  .data-status{display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:11px;}
+  .source-pill{padding:3px 9px; border-radius:12px; font-weight:700; letter-spacing:.04em; font-size:10px; text-transform:uppercase;}
+  .source-pill.demo{background:#FEF3C7; color:#B45309;}
+  .source-pill.cur{background:#DCFCE7; color:#15803D;}
+  .source-pill.error{background:#FEE2E2; color:#B91C1C;}
+  .updated-at{color:var(--text-faint);}
+  .refresh-btn{
+    width:34px; height:34px; border-radius:9px; border:1px solid var(--border); background:var(--panel-2);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:15px; color:var(--text-dim);
+  }
+  .refresh-btn:hover{color:var(--purple); border-color:var(--purple);}
+  .refresh-btn.spinning{animation:spin .6s linear;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .theme-toggle{
+    width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:var(--panel-2);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; color:var(--text);
+  }
+
+  /* Period bar */
+  .period-bar{
+    background:var(--panel); border-bottom:1px solid var(--border); padding:14px 32px;
+    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  }
+  .period-bar-inner{max-width:1280px; margin:0 auto; width:100%; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;}
+  .presets{display:flex; gap:4px; background:var(--panel-2); border:1px solid var(--border); border-radius:9px; padding:4px;}
+  .presets button{
+    font-family:var(--mono); font-size:12px; color:var(--text-dim); background:transparent; border:none;
+    padding:7px 13px; border-radius:6px; cursor:pointer; font-weight:500;
+  }
+  .presets button.active{background:var(--grad); color:#fff; font-weight:700;}
+  .presets button:hover:not(.active){color:var(--text);}
+  .date-range{display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:12px; color:var(--text-dim);}
+  .date-range input[type="date"]{
+    font-family:var(--mono); font-size:12px; padding:7px 10px; border-radius:7px; border:1px solid var(--border);
+    background:var(--panel-2); color:var(--text);
+  }
+  .date-range .apply-btn{
+    background:var(--grad); color:#fff; border:none; font-family:var(--mono); font-weight:700; font-size:12px;
+    padding:8px 14px; border-radius:7px; cursor:pointer;
+  }
+  .avail-note{font-family:var(--mono); font-size:10px; color:var(--text-faint); margin-top:6px;}
+  .filter-label{font-family:var(--mono); font-size:11px; color:var(--text-dim); font-weight:500;}
+  .filter-select{
+    font-family:var(--mono); font-size:12px; padding:7px 10px; border-radius:7px; border:1px solid var(--border);
+    background:var(--panel-2); color:var(--text);
+  }
+
+  .wrap{max-width:1280px; margin:0 auto; padding:20px 32px 80px;}
+
+  .hero{
+    display:grid; grid-template-columns:280px 1fr; gap:0;
+    background:var(--panel); border:1px solid var(--border); border-radius:16px;
+    margin-bottom:20px; overflow:hidden; box-shadow:var(--shadow);
+  }
+  .meter-box{display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; border-right:1px solid var(--border);}
+  .meter-svg{width:200px; height:120px;}
+  .meter-readout{text-align:center; margin-top:-6px;}
+  .meter-readout .val{font-family:var(--mono); font-size:30px; font-weight:700; color:var(--purple);}
+  .meter-readout .lbl{font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.06em; margin-top:2px;}
+  .meter-tick{font-family:var(--mono); font-size:10px; fill:var(--text-faint);}
+
+  .stat-strip{display:flex; flex-direction:column;}
+  .stat-group{border-bottom:1px solid var(--border);}
+  .stat-group:last-child{border-bottom:none;}
+  .stat-group-label{font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-faint); padding:10px 22px 0;}
+  .stat-group-compare{background:var(--panel-2);}
+  .stat-group-row{display:grid; grid-template-columns:repeat(3,1fr);}
+  .stat-group-compare .stat-group-row{grid-template-columns:repeat(2,1fr);}
+  .stat{padding:14px 22px 20px; border-right:1px solid var(--border); display:flex; flex-direction:column; justify-content:center; gap:8px;}
+  .stat:last-child{border-right:none;}
+  .stat .lbl{font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.08em;}
+  .stat .num{font-family:var(--mono); font-size:22px; font-weight:700;}
+  .stat .delta{font-family:var(--mono); font-size:11px; display:flex; align-items:center; gap:4px; font-weight:500;}
+  .delta.up{color:var(--danger);} .delta.down{color:var(--good);} .delta.flat{color:var(--text-dim);}
+
+  .trend-panel{background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:22px 24px; margin-bottom:20px; box-shadow:var(--shadow);}
+  .panel-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;}
+  .panel-title{font-size:14px; font-weight:700; letter-spacing:-0.01em;}
+  .panel-sub{font-family:var(--mono); font-size:11px; color:var(--text-faint); margin-top:2px;}
+  .chart-wrap{height:220px;}
+  .forecast-box{flex:1; min-width:200px; background:var(--panel-2); border:1px solid var(--border); border-radius:10px; padding:16px;}
+  .forecast-box .lbl{font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-faint);}
+  .forecast-box .num{font-family:var(--mono); font-size:24px; font-weight:700; margin-top:6px;}
+  .forecast-box .note{font-size:11px; color:var(--text-dim); margin-top:6px; line-height:1.4;}
+
+  .section-label{font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--text-faint); margin:28px 0 12px 2px; font-weight:600;}
+  .service-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:14px;}
+  .svc-card{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:18px 20px; cursor:pointer; transition:.15s; box-shadow:var(--shadow);}
+  .svc-card:hover{border-color:var(--purple); transform:translateY(-1px);}
+  .svc-card.expanded{border-color:var(--purple); background:var(--panel-2);}
+  .svc-top{display:flex; justify-content:space-between; align-items:flex-start;}
+  .svc-icon-row{display:flex; align-items:center; gap:10px;}
+  .svc-badge{width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0;}
+  .svc-name{font-size:14px; font-weight:700;}
+  .pace-badge{
+    font-family:var(--mono); font-size:9px; font-weight:700; color:var(--danger);
+    background:color-mix(in srgb, var(--danger) 12%, transparent); padding:2px 6px; border-radius:8px; margin-left:6px; vertical-align:middle;
+  }
+  .svc-code{font-family:var(--mono); font-size:10px; color:var(--text-faint); margin-top:1px;}
+  .svc-caret{color:var(--text-faint); font-size:12px; transition:.2s;}
+  .svc-card.expanded .svc-caret{transform:rotate(90deg); color:var(--purple);}
+  .svc-cost{font-family:var(--mono); font-size:22px; font-weight:700; margin-top:12px; color:var(--text);}
+  .svc-bar-track{height:5px; background:var(--border); border-radius:3px; margin-top:12px; overflow:hidden;}
+  .svc-bar-fill{height:100%; background:var(--grad); border-radius:3px;}
+  .svc-meta{display:flex; justify-content:space-between; margin-top:8px; font-family:var(--mono); font-size:11px; color:var(--text-dim);}
+
+  .drilldown{max-height:0; overflow:hidden; transition:max-height .25s ease;}
+  .svc-card.expanded .drilldown{max-height:900px; margin-top:16px; padding-top:14px; border-top:1px solid var(--border);}
+  .dd-row{margin-bottom:12px;}
+  .dd-row-label{font-family:var(--mono); font-size:10px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px; font-weight:600;}
+  .dd-items{display:flex; flex-direction:column; gap:5px;}
+  .dd-item{display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer; padding:2px 4px; border-radius:5px;}
+  .dd-item:hover{background:var(--border);}
+  .dd-item-name{flex:1; color:var(--text-dim); display:flex; align-items:center; gap:4px;}
+  .dd-item-name .car{font-size:9px; color:var(--text-faint); transition:.2s;}
+  .dd-item.open .dd-item-name .car{transform:rotate(90deg); color:var(--purple);}
+  .dd-item-bar{height:5px; flex:2; background:var(--border); border-radius:3px; overflow:hidden;}
+  .dd-item-fill{height:100%; border-radius:3px; background:var(--grad);}
+  .dd-item-val{font-family:var(--mono); width:56px; text-align:right; color:var(--text); font-weight:500;}
+  .dd-subitems{max-height:0; overflow:hidden; transition:max-height .2s ease; padding-left:18px;}
+  .dd-item.open + .dd-subitems{max-height:200px; margin:4px 0 6px;}
+  .dd-subitem{display:flex; align-items:center; gap:8px; font-size:11px; padding:2px 0;}
+  .dd-subitem-name{flex:1; color:var(--text-faint);}
+  .dd-subitem-bar{height:4px; flex:2; background:var(--border); border-radius:2px; overflow:hidden;}
+  .dd-subitem-fill{height:100%; border-radius:2px; background:var(--text-faint);}
+  .dd-subitem-val{font-family:var(--mono); width:50px; text-align:right; color:var(--text-dim);}
+
+  .load-state, .error-state{grid-column:1/-1; text-align:center; padding:40px; color:var(--text-dim); font-family:var(--mono); font-size:13px;}
+  .error-state{color:var(--danger);}
+  .idle-summary{font-family:var(--mono); font-size:13px; color:var(--text); margin-bottom:14px; padding:10px 14px; background:var(--panel-2); border-radius:8px; border:1px solid var(--border);}
+  .idle-summary b{color:var(--good); font-size:15px;}
+  .idle-row{display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px;}
+  .idle-row:last-child{border-bottom:none;}
+  .idle-type-badge{font-family:var(--mono); font-size:10px; padding:3px 8px; border-radius:10px; background:var(--panel-2); color:var(--text-dim); flex-shrink:0; white-space:nowrap;}
+  .idle-id{font-family:var(--mono); font-size:11px; color:var(--text-dim); flex:1; word-break:break-all;}
+  .idle-detail{font-size:11px; color:var(--text-faint); flex:1;}
+  .idle-cost{font-family:var(--mono); font-size:13px; font-weight:700; color:var(--warn); flex-shrink:0;}
+
+  footer{
+    margin-top:44px; padding-top:24px; border-top:1px solid var(--border);
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;
+  }
+  .footer-brand{font-size:13px; color:var(--text-dim);}
+  .footer-brand b{color:var(--text); font-weight:700;}
+  .footer-links{display:flex; gap:16px; font-family:var(--mono); font-size:12px;}
+  .footer-links a{color:var(--purple); text-decoration:none;}
+  .footer-links a:hover{text-decoration:underline;}
+
+  @media (max-width:720px){
+    .hero{grid-template-columns:1fr;}
+    .meter-box{border-right:none; border-bottom:1px solid var(--border);}
+    .stat-group-row{grid-template-columns:repeat(2,1fr) !important;}
+    .stat{border-right:1px solid var(--border);}
+    .stat:nth-child(2n){border-right:none;}
+  }
+</style>
+</head>
+<body data-theme="light">
+
+<div class="topbar">
+  <div class="topbar-msg">⚡ <span>Budget alert</span><span class="dim" id="bannerText">— checking for services trending over pace…</span></div>
+</div>
+
+<header>
+  <div class="brand">
+    <div class="logo">&gt;_</div>
+    <div class="brand-text"><h1>AWS Cost Meter</h1></div>
+  </div>
+  <div class="header-controls">
+    <div class="data-status">
+      <span class="source-pill" id="sourcePill">—</span>
+      <span class="updated-at" id="updatedAt"></span>
+    </div>
+    <button class="refresh-btn" id="refreshBtn" title="Reload data">⟳</button>
+    <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<div class="period-bar">
+  <div class="period-bar-inner">
+    <div class="presets" id="presets">
+      <button data-months="1">1M</button>
+      <button data-months="3">3M</button>
+      <button data-months="6">6M</button>
+      <button data-months="9">9M</button>
+      <button data-months="12">12M</button>
+    </div>
+    <div>
+      <div class="date-range">
+        <input type="date" id="startDate">
+        <span>–</span>
+        <input type="date" id="endDate">
+        <button class="apply-btn" id="applyRange">Apply</button>
+      </div>
+      <div class="avail-note" id="availNote"></div>
+    </div>
+  </div>
+</div>
+
+<div class="period-bar" style="border-top:none;">
+  <div class="period-bar-inner">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <label class="filter-label" for="regionFilter">Region</label>
+      <select id="regionFilter" class="filter-select">
+        <option value="all">All Regions</option>
+        <option value="us-east-1">us-east-1</option>
+        <option value="eu-central-1">eu-central-1</option>
+        <option value="ap-south-1">ap-south-1</option>
+      </select>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <label class="filter-label" for="tagFilter">Cost allocation tag</label>
+      <select id="tagFilter" class="filter-select">
+        <option value="all::">All Tags</option>
+        <optgroup label="env">
+          <option value="env::(untagged)">(untagged)</option>
+          <option value="env::env:prod">env:prod</option>
+          <option value="env::env:staging">env:staging</option>
+          <option value="env::env:dev">env:dev</option>
+        </optgroup>
+        <optgroup label="cost-center">
+          <option value="cost-center::(untagged)">(untagged)</option>
+          <option value="cost-center::cc-101-engineering">cost-center:cc-101-engineering</option>
+          <option value="cost-center::cc-204-data-platform">cost-center:cc-204-data-platform</option>
+          <option value="cost-center::cc-309-shared-services">cost-center:cc-309-shared-services</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="avail-note" style="margin-top:0;">Region and Tag filters combine — both apply together, not one-or-the-other.</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="meter-box">
+      <svg class="meter-svg" viewBox="0 0 200 120" id="meterSvg"></svg>
+      <div class="meter-readout">
+        <div class="val" id="meterVal">$0</div>
+        <div class="lbl" id="meterLbl">of $0 budget</div>
+      </div>
+    </div>
+    <div class="stat-strip" id="statStrip"></div>
+  </div>
+
+  <div class="trend-panel" id="contributorPanel">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title" id="contributorTitle">Why did cost change?</div>
+        <div class="panel-sub" id="contributorRangeLabel">vs. the immediately preceding period of the same length</div>
+      </div>
+      <div class="presets" id="contributorViewToggle" style="flex-shrink:0;">
+        <button data-mode="waterfall" class="active">Waterfall</button>
+        <button data-mode="stacked">Stacked</button>
+      </div>
+    </div>
+    <div style="display:flex; gap:24px; flex-wrap:wrap;">
+      <div style="flex:1; min-width:220px;" id="contributorList"></div>
+      <div id="contributorChartWrap" style="flex:2; min-width:320px; height:240px;"><canvas id="contributorChart"></canvas></div>
+    </div>
+    <div id="contributorBody"></div>
+  </div>
+
+  <div class="trend-panel" id="forecastPanel">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title" id="forecastTitle">Month-end forecast</div>
+        <div class="panel-sub">two independent methods, computed from data already on file — no paid API calls</div>
+      </div>
+    </div>
+    <div id="forecastBody" style="display:flex; gap:24px; flex-wrap:wrap;"></div>
+  </div>
+
+  <div class="trend-panel">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">Daily spend</div>
+        <div class="panel-sub" id="trendSub">selected period, USD</div>
+      </div>
+    </div>
+    <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+  </div>
+
+  <div class="section-label">By service — click to drill down (region/tag rows expand further)</div>
+  <div class="service-grid" id="serviceGrid"></div>
+
+  <div class="trend-panel" id="overPacePanel" style="margin-top:20px;">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">Services trending over pace</div>
+        <div class="panel-sub" id="overPaceSub">recent daily spend vs. earlier in the period</div>
+      </div>
+    </div>
+    <div class="chart-wrap" style="display:flex; align-items:center; gap:24px;">
+      <div style="flex:0 0 220px; height:220px;"><canvas id="overPaceChart"></canvas></div>
+      <div id="overPaceLegend" style="flex:1; font-family:var(--mono); font-size:12px; color:var(--text-dim);"></div>
+    </div>
+  </div>
+
+  <div class="trend-panel" id="idlePanel" style="margin-top:20px;">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title" id="idleTitle">Idle & unattached resources</div>
+        <div class="panel-sub">unattached EBS volumes, unassociated Elastic IPs, load balancers with no healthy targets — a snapshot, not tied to the date range above</div>
+      </div>
+    </div>
+    <div id="idleBody"></div>
+  </div>
+
+  <footer>
+    <div class="footer-brand">Built by <b>Anuradha Iyer</b> — Cloud / DevOps / AI Engineering</div>
+    <div class="footer-links">
+      <a href="https://linkedin.com/in/iyeranuradha" target="_blank">LinkedIn</a>
+      <!-- swap this href for the portfolio site once it's live -->
+      <a href="https://github.com/AnuradhaVIyer" target="_blank">GitHub</a>
+    </div>
+  </footer>
+</div>
+
+<script>
+// ---------- Theme ----------
+const themeToggle = document.getElementById('themeToggle');
+themeToggle.addEventListener('click', ()=>{
+  const cur = document.body.getAttribute('data-theme');
+  const next = cur==='light' ? 'dark' : 'light';
+  document.body.setAttribute('data-theme', next);
+  themeToggle.textContent = next==='light' ? '🌙' : '☀️';
+  renderAll();
+});
+
+// ---------- Config ----------
+let SHOW_CENTS = false;
+(function(){
+  const base = Number.prototype.toLocaleString;
+  Number.prototype.toLocaleString = function(locale, opts){
+    return base.call(this, locale, opts || (SHOW_CENTS ? {minimumFractionDigits:2, maximumFractionDigits:2} : {maximumFractionDigits:2}));
+  };
+})();
+const DATA_DIR = './data/cost';
+const monthCache = new Map();   // "YYYY-MM" -> parsed month file
+let RESOURCE_SPLITS = {};
+let manifest = null;
+let currentDays = [];           // flattened day records for the selected range
+let currentAgg = null;          // aggregated result for the selected range
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function toISO(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function monthsBetween(start, end){
+  const months = [];
+  let d = new Date(start.getFullYear(), start.getMonth(), 1);
+  const last = new Date(end.getFullYear(), end.getMonth(), 1);
+  while(d <= last){
+    months.push(`${d.getFullYear()}-${pad(d.getMonth()+1)}`);
+    d.setMonth(d.getMonth()+1);
+  }
+  return months;
+}
+
+async function fetchMonth(month){
+  if(monthCache.has(month)) return monthCache.get(month);
+  const res = await fetch(`${DATA_DIR}/cost-data-${month}.json`, {cache:'no-store'});
+  if(!res.ok) throw new Error(`missing month file ${month}`);
+  const json = await res.json();
+  monthCache.set(month, json);
+  return json;
+}
+
+async function loadManifestAndSplits(){
+  const [mRes, rRes] = await Promise.all([
+    fetch(`${DATA_DIR}/manifest.json`, {cache:'no-store'}),
+    fetch(`${DATA_DIR}/resource-splits.json`, {cache:'no-store'})
+  ]);
+  manifest = await mRes.json();
+  RESOURCE_SPLITS = rRes.ok ? await rRes.json() : {};
+  populateFilters();
+  SHOW_CENTS = !!manifest.source && manifest.source !== 'demo';
+  if(SHOW_CENTS) document.title = 'AWS Cost Meter';
+}
+
+// Region and tag filter options come from the manifest when it provides them
+function populateFilters(){
+  const esc = v => String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  if(Array.isArray(manifest.regions)){
+    document.getElementById('regionFilter').innerHTML =
+      '<option value="all">All Regions</option>' +
+      manifest.regions.map(r=>`<option value="${esc(r)}">${esc(r)}</option>`).join('');
+  }
+  if(manifest.tags && typeof manifest.tags === 'object'){
+    document.getElementById('tagFilter').innerHTML =
+      '<option value="all::">All Tags</option>' +
+      Object.entries(manifest.tags).map(([k,vals])=>
+        `<optgroup label="${esc(k)}">` +
+        ['(untagged)'].concat(vals.filter(v=>v!=='(untagged)')).map(v=>`<option value="${esc(k)}::${esc(v)}">${esc(v)}</option>`).join('') +
+        '</optgroup>').join('');
+  }
+}
+
+// ---------- Aggregation ----------
+// ---------- Filtering ----------
+// currentFilter: {region: 'all'|RegionId, tagKey: 'all'|tagKey, tagValue: tagValue}
+let currentFilter = {region:'all', tagKey:'all', tagValue:null};
+
+function cellMatches(cell, filter){
+  if(filter.region && filter.region !== 'all' && cell.RegionId !== filter.region) return false;
+  if(filter.tagKey && filter.tagKey !== 'all' && cell.tags[filter.tagKey] !== filter.tagValue) return false;
+  return true;
+}
+function filterDayServices(day, filter){
+  const services = day.services.map(s=>{
+    const cells = s.breakdown.filter(c=>cellMatches(c, filter));
+    const cost = cells.reduce((sum,c)=>sum+c.BilledCost,0);
+    return {ServiceName:s.ServiceName, ServiceCategory:s.ServiceCategory, code:s.code, icon:s.icon, bg:s.bg, fg:s.fg, BilledCost:cost, breakdown:cells};
+  });
+  const dayTotal = services.reduce((sum,s)=>sum+s.BilledCost,0);
+  return {date:day.date, BilledCost:dayTotal, services};
+}
+function aggregateServiceCells(cells){
+  const regionMap = new Map();
+  const tagMaps = {};
+  let total = 0;
+  for(const c of cells){
+    total += c.BilledCost;
+    regionMap.set(c.RegionId, (regionMap.get(c.RegionId)||0) + c.BilledCost);
+    for(const [tk,tv] of Object.entries(c.tags)){
+      tagMaps[tk] = tagMaps[tk] || new Map();
+      tagMaps[tk].set(tv, (tagMaps[tk].get(tv)||0) + c.BilledCost);
+    }
+  }
+  const regions = Array.from(regionMap.entries());
+  const tags = {};
+  for(const [tk,m] of Object.entries(tagMaps)) tags[tk] = Array.from(m.entries());
+  return {total, regions, tags};
+}
+
+async function aggregateRange(startISO, endISO, filter){
+  filter = filter || currentFilter;
+  const start = new Date(startISO), end = new Date(endISO);
+  const months = monthsBetween(start, end);
+  const monthFiles = await Promise.all(months.map(fetchMonth));
+  let rawDays = [];
+  for(const mf of monthFiles){
+    for(const day of mf.days){
+      if(day.date >= startISO && day.date <= endISO) rawDays.push(day);
+    }
+  }
+  rawDays.sort((a,b)=> a.date < b.date ? -1 : 1);
+
+  // Region and tag filters are applied at the cell level (breakdown), which is where CUR's
+  // own data actually carries both dimensions on the same line item - this is what makes
+  // combining Region + Tag filters possible, unlike the earlier flat region/tag lists.
+  const days = rawDays.map(day => filterDayServices(day, filter));
+
+  const svcCells = new Map();
+  for(const day of days){
+    for(const s of day.services){
+      if(!svcCells.has(s.ServiceName)){
+        svcCells.set(s.ServiceName, {ServiceName:s.ServiceName, ServiceCategory:s.ServiceCategory, code:s.code, icon:s.icon, bg:s.bg, fg:s.fg, cells:[]});
+      }
+      svcCells.get(s.ServiceName).cells.push(...s.breakdown);
+    }
+  }
+  const services = Array.from(svcCells.values()).map(sv=>{
+    const {total, regions, tags} = aggregateServiceCells(sv.cells);
+    return {ServiceName:sv.ServiceName, ServiceCategory:sv.ServiceCategory, code:sv.code, icon:sv.icon, bg:sv.bg, fg:sv.fg, BilledCost: total, regions, tags};
+  });
+  const totalSpend = services.reduce((s,x)=>s+x.BilledCost,0);
+  const numDays = days.length || 1;
+  const dailyAvg = Math.round(totalSpend/numDays);
+  const avgDaysInMonth = 30.44;
+  const proratedBudget = Math.round(manifest.budget_monthly * (numDays/avgDaysInMonth));
+  const budgetDelta = totalSpend - proratedBudget;
+  let peak = days[0] || {date:startISO, BilledCost:0};
+  for(const d of days){ if(d.BilledCost > peak.BilledCost) peak = d; }
+
+  const overPace = detectOverPace(days);
+  return {days, services, totalSpend, numDays, dailyAvg, proratedBudget, budgetDelta, peak, overPaceServices: overPace.names, overPaceDetail: overPace.detail};
+}
+
+function detectOverPace(days){
+  // Flags a service as "trending over pace" if its average daily cost in the most recent
+  // ~25% of the selected days exceeds its average daily cost in the earlier ~75% by >15%,
+  // AND the service accounts for at least 3% of total spend in the window - a small dollar
+  // wobble on a near-zero-cost service (e.g. Secrets Manager) can swing >15% by pure chance,
+  // so a materiality floor is required to avoid flagging noise as a real trend.
+  if(days.length < 4) return {names: new Set(), detail: []};
+  const splitIdx = Math.floor(days.length * 0.75);
+  const earlyDays = days.slice(0, splitIdx);
+  const recentDays = days.slice(splitIdx);
+  if(earlyDays.length === 0 || recentDays.length === 0) return {names: new Set(), detail: []};
+
+  const earlySum = {}, recentSum = {};
+  let grandTotal = 0;
+  for(const d of earlyDays) for(const s of d.services){ earlySum[s.ServiceName] = (earlySum[s.ServiceName]||0) + s.BilledCost; grandTotal += s.BilledCost; }
+  for(const d of recentDays) for(const s of d.services){ recentSum[s.ServiceName] = (recentSum[s.ServiceName]||0) + s.BilledCost; grandTotal += s.BilledCost; }
+  const materialityFloor = grandTotal * 0.03;
+
+  const names = new Set();
+  const detail = [];
+  for(const name of Object.keys(recentSum)){
+    const combinedTotal = (earlySum[name]||0) + recentSum[name];
+    if(combinedTotal < materialityFloor) continue;
+    const earlyAvg = (earlySum[name]||0) / earlyDays.length;
+    const recentAvg = recentSum[name] / recentDays.length;
+    const isNew = earlyAvg === 0 && recentAvg > 0;
+    const isAccelerating = earlyAvg > 0 && recentAvg > earlyAvg * 1.15;
+    if(isNew || isAccelerating){
+      names.add(name);
+      detail.push({name, earlyAvg, recentAvg, recentTotal: recentSum[name]});
+    }
+  }
+  return {names, detail};
+}
+
+// ---------- Meter ----------
+function drawMeter(value, budget){
+  const pct = budget>0 ? Math.min(value/budget,1) : 0;
+  const svg = document.getElementById('meterSvg');
+  const cx=100, cy=105, r=85;
+  const arcPoint=(a)=>[cx+r*Math.cos(a), cy-r*Math.sin(a)];
+  const angle = Math.PI - pct*Math.PI;
+  const [sx,sy]=arcPoint(Math.PI);
+  const [ex,ey]=arcPoint(0);
+  const [px,py]=arcPoint(angle);
+  const trackColor = getComputedStyle(document.body).getPropertyValue('--border').trim();
+  let bg = `<path d="M${sx},${sy} A${r},${r} 0 0 1 ${ex},${ey}" stroke="${trackColor}" stroke-width="14" fill="none" stroke-linecap="round"/>`;
+  let fg = pct>0 ? `<defs><linearGradient id="gaugeGrad" gradientUnits="userSpaceOnUse" x1="${sx}" y1="${sy}" x2="${ex}" y2="${ey}">
+      <stop offset="0%" stop-color="#7C3AED"/><stop offset="55%" stop-color="#3B82F6"/><stop offset="100%" stop-color="#22D3EE"/>
+    </linearGradient></defs><path d="M${sx},${sy} A${r},${r} 0 0 1 ${px},${py}" stroke="url(#gaugeGrad)" stroke-width="14" fill="none" stroke-linecap="round"/>` : '';
+  let ticks='';
+  for(let i=0;i<=10;i++){
+    const a = Math.PI - (i/10)*Math.PI;
+    const [tx1,ty1]=[cx+(r+11)*Math.cos(a), cy-(r+11)*Math.sin(a)];
+    const [tx2,ty2]=[cx+(r+17)*Math.cos(a), cy-(r+17)*Math.sin(a)];
+    ticks+=`<line x1="${tx1}" y1="${ty1}" x2="${tx2}" y2="${ty2}" stroke="${trackColor}" stroke-width="2"/>`;
+  }
+  const [nx,ny]=[cx+(r-8)*Math.cos(angle), cy-(r-8)*Math.sin(angle)];
+  const textColor = getComputedStyle(document.body).getPropertyValue('--text').trim();
+  svg.innerHTML = bg+fg+ticks+
+    `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${textColor}" stroke-width="2"/>` +
+    `<circle cx="${cx}" cy="${cy}" r="4" fill="${textColor}"/>` +
+    `<text x="${cx-r-5}" y="${cy+14}" class="meter-tick">$0</text>` +
+    `<text x="${cx+r-22}" y="${cy+14}" class="meter-tick">$${Math.round(budget/1000)}k</text>`;
+  document.getElementById('meterVal').textContent = '$'+value.toLocaleString();
+}
+
+// ---------- Render ----------
+function renderStats(agg){
+  const factStats = [
+    {lbl:'Total (period)', num:'$'+agg.totalSpend.toLocaleString(), delta:agg.numDays+' day'+(agg.numDays===1?'':'s')+' selected', dir:'flat'},
+    {lbl:'Daily average', num:'$'+agg.dailyAvg.toLocaleString(), delta:'per day over period', dir:'flat'},
+    {lbl:'Peak day', num:'$'+agg.peak.BilledCost.toLocaleString(), delta:agg.peak.date, dir:'flat'},
+  ];
+  const compareStats = [
+    {lbl:'vs. prorated budget', num:(agg.budgetDelta>=0?'+':'-')+'$'+Math.abs(agg.budgetDelta).toLocaleString(),
+     delta: `$${agg.totalSpend.toLocaleString()} vs $${agg.proratedBudget.toLocaleString()} budget for ${agg.numDays}d`,
+     dir: agg.budgetDelta>=0?'up':'down'},
+  ];
+  if(agg.yoy && agg.yoy.available){
+    const priorTotal = agg.yoy.priorAgg.totalSpend;
+    const pctChange = priorTotal>0 ? Math.round((agg.totalSpend-priorTotal)/priorTotal*100) : null;
+    compareStats.push({
+      lbl:'vs. same dates last year', num: pctChange===null? '—' : (pctChange>=0?'+':'')+pctChange+'%',
+      delta: `$${agg.totalSpend.toLocaleString()} vs $${priorTotal.toLocaleString()} (${agg.yoy.priorStart} to ${agg.yoy.priorEnd})`,
+      dir: pctChange>0?'up':pctChange<0?'down':'flat'
+    });
+  }else{
+    compareStats.push({lbl:'vs. same dates last year', num:'n/a', delta:'not enough history for this range', dir:'flat'});
+  }
+
+  const renderStatCard = s => `
+    <div class="stat">
+      <div class="lbl">${s.lbl}</div>
+      <div class="num">${s.num}</div>
+      <div class="delta ${s.dir}">${s.dir==='up'?'▲':s.dir==='down'?'▼':'·'} ${s.delta}</div>
+    </div>`;
+
+  document.getElementById('statStrip').innerHTML = `
+    <div class="stat-group">
+      <div class="stat-group-label">This period</div>
+      <div class="stat-group-row">${factStats.map(renderStatCard).join('')}</div>
+    </div>
+    <div class="stat-group stat-group-compare">
+      <div class="stat-group-label">Compared to — three different baselines, shown separately on purpose</div>
+      <div class="stat-group-row">${compareStats.map(renderStatCard).join('')}</div>
+    </div>`;
+  document.getElementById('meterLbl').textContent = `of $${agg.proratedBudget.toLocaleString()} budget for ${agg.numDays} day${agg.numDays===1?'':'s'}`;
+  drawMeter(agg.totalSpend, agg.proratedBudget);
+}
+
+let trendChart;
+function renderTrend(agg){
+  const labels = agg.days.map(d=>d.date.slice(5));
+  const actual = agg.days.map(d=>d.BilledCost);
+  document.getElementById('trendSub').textContent = agg.days.length ? `${agg.days[0].date} to ${agg.days[agg.days.length-1].date}, USD` : 'no data in range';
+  const ctx = document.getElementById('trendChart');
+  const gridColor = getComputedStyle(document.body).getPropertyValue('--border').trim();
+  const tickColor = getComputedStyle(document.body).getPropertyValue('--text-faint').trim();
+  const panelColor = getComputedStyle(document.body).getPropertyValue('--panel').trim();
+  if(trendChart) trendChart.destroy();
+
+  const datasets = [
+    {label:'this period', data:actual, borderColor:'#7C3AED', backgroundColor:'rgba(124,58,237,0.10)', fill:true, tension:.3, pointRadius:0, borderWidth:2.5}
+  ];
+  let showLegend = false;
+  if(agg.yoy && agg.yoy.available){
+    // Align by index (day 1 of this period vs day 1 of the same period last year), not by
+    // calendar date, since the two periods fall in different years.
+    const priorDays = agg.yoy.priorAgg.days;
+    const priorSeries = labels.map((_, i) => priorDays[i] ? priorDays[i].BilledCost : null);
+    datasets.push({label:'same period last year', data:priorSeries, borderColor:tickColor, borderDash:[4,4], pointRadius:0, borderWidth:2, fill:false});
+    showLegend = true;
+  }
+
+  trendChart = new Chart(ctx,{
+    type:'line',
+    data:{labels, datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:showLegend, labels:{color:tickColor, font:{family:'IBM Plex Mono',size:11}}},
+        tooltip:{backgroundColor:panelColor, borderColor:gridColor, borderWidth:1, titleColor:tickColor, bodyColor:tickColor, titleFont:{family:'IBM Plex Mono',size:11}, bodyFont:{family:'IBM Plex Mono',size:11}}
+      },
+      scales:{
+        x:{grid:{color:gridColor}, ticks:{color:tickColor, font:{family:'IBM Plex Mono',size:10}, maxTicksLimit:10}},
+        y:{grid:{color:gridColor}, ticks:{color:tickColor, font:{family:'IBM Plex Mono',size:10}, callback:v=>'$'+v}}
+      }
+    }
+  });
+}
+
+function resourceRowsFor(serviceName, value){
+  const splits = RESOURCE_SPLITS[serviceName] || [];
+  return splits.map(([label,pct])=>{
+    const v = Math.round(value*pct);
+    return `<div class="dd-subitem">
+      <div class="dd-subitem-name">${label}</div>
+      <div class="dd-subitem-bar"><div class="dd-subitem-fill" style="width:${Math.round(pct*100)}%"></div></div>
+      <div class="dd-subitem-val">$${v.toLocaleString()}</div>
+    </div>`;
+  }).join('');
+}
+function ddRows(serviceName, items, total){
+  return items.map(([label,val],i)=>{
+    const pct = total ? Math.round(val/total*100) : 0;
+    const rowId = `${serviceName}-${label}`.replace(/[^a-zA-Z0-9]/g,'');
+    return `<div class="dd-item" data-row="${rowId}" data-svc="${serviceName}" data-val="${val}">
+      <div class="dd-item-name"><span class="car">▶</span>${label}</div>
+      <div class="dd-item-bar"><div class="dd-item-fill" style="width:${pct}%"></div></div>
+      <div class="dd-item-val">$${val.toLocaleString()}</div>
+    </div>
+    <div class="dd-subitems" data-sub="${rowId}"></div>`;
+  }).join('');
+}
+function renderServices(agg){
+  const services = agg.services;
+  const maxCost = Math.max(1, ...services.map(s=>s.BilledCost));
+  const overPace = agg.overPaceServices || new Set();
+  document.getElementById('serviceGrid').innerHTML = services.map((s,i)=>`
+    <div class="svc-card" data-idx="${i}" data-service="${s.ServiceName}">
+      <div class="svc-top">
+        <div class="svc-icon-row">
+          <div class="svc-badge" style="background:${s.bg}; color:${s.fg}">${s.icon}</div>
+          <div><div class="svc-name">${s.ServiceName} ${overPace.has(s.ServiceName) ? '<span class="pace-badge" title="Recent daily spend is trending above its earlier pace">▲ trending up</span>' : ''}</div><div class="svc-code">${s.code} · ${s.ServiceCategory}</div></div>
+        </div>
+        <div class="svc-caret">▶</div>
+      </div>
+      <div class="svc-cost">$${s.BilledCost.toLocaleString()}</div>
+      <div class="svc-bar-track"><div class="svc-bar-fill" style="width:${Math.round(s.BilledCost/maxCost*100)}%"></div></div>
+      <div class="svc-meta"><span>${agg.totalSpend? Math.round(s.BilledCost/agg.totalSpend*100):0}% of total</span><span>${agg.numDays} days</span></div>
+      <div class="drilldown">
+        <div class="dd-row"><div class="dd-row-label">By region</div><div class="dd-items">${ddRows(s.ServiceName, s.regions, s.BilledCost)}</div></div>
+        ${Object.entries(s.tags).map(([tagKey, pairs]) => `
+        <div class="dd-row"><div class="dd-row-label">By ${tagKey}</div><div class="dd-items">${ddRows(s.ServiceName, pairs, s.BilledCost)}</div></div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+document.getElementById('serviceGrid').addEventListener('click', e=>{
+  const ddItem = e.target.closest('.dd-item');
+  if(ddItem){
+    e.stopPropagation();
+    const sub = ddItem.nextElementSibling;
+    const isOpen = ddItem.classList.contains('open');
+    if(isOpen){
+      ddItem.classList.remove('open'); sub.style.maxHeight = null; sub.innerHTML='';
+    }else{
+      ddItem.classList.add('open');
+      sub.innerHTML = resourceRowsFor(ddItem.dataset.svc, parseFloat(ddItem.dataset.val));
+    }
+    return;
+  }
+  const card = e.target.closest('.svc-card');
+  if(card) card.classList.toggle('expanded');
+});
+
+// ---------- Orchestration ----------
+let overPaceChart;
+function renderOverPace(agg){
+  const detail = agg.overPaceDetail || [];
+  document.getElementById('bannerText').textContent =
+    detail.length ? `— ${detail.length} service${detail.length===1?'':'s'} trending over pace this period` : `— no services trending over pace this period`;
+
+  const panel = document.getElementById('overPacePanel');
+  const legend = document.getElementById('overPaceLegend');
+  const ctx = document.getElementById('overPaceChart');
+  if(overPaceChart){ overPaceChart.destroy(); overPaceChart = null; }
+
+  if(!detail.length){
+    ctx.style.display = 'none';
+    legend.innerHTML = `<div style="color:var(--text-faint);">No services are accelerating relative to their earlier pace in this period.</div>`;
+    return;
+  }
+  ctx.style.display = '';
+  const svcMeta = new Map(agg.services.map(s=>[s.ServiceName, s]));
+  const labels = detail.map(d=>d.name);
+  const values = detail.map(d=>Math.round(d.recentTotal));
+  const colors = detail.map(d=> (svcMeta.get(d.name)||{}).fg || '#7C3AED');
+
+  overPaceChart = new Chart(ctx, {
+    type:'doughnut',
+    data:{labels, datasets:[{data:values, backgroundColor:colors, borderColor:getComputedStyle(document.body).getPropertyValue('--panel').trim(), borderWidth:2}]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:(c)=>`${c.label}: $${c.raw.toLocaleString()} (recent portion of period)`}}}
+    }
+  });
+
+  legend.innerHTML = detail.map((d,i)=>`
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+      <span style="width:10px; height:10px; border-radius:3px; background:${colors[i]}; flex-shrink:0;"></span>
+      <span style="flex:1; color:var(--text);">${d.name}</span>
+      <span>$${Math.round(d.earlyAvg)}/day → $${Math.round(d.recentAvg)}/day</span>
+    </div>`).join('');
+}
+
+async function computePeriodOverPeriod(startISO, endISO){
+  const start = new Date(startISO), end = new Date(endISO);
+  const rangeDays = Math.round((end-start)/(1000*60*60*24)) + 1;
+  const priorEnd = new Date(start); priorEnd.setDate(priorEnd.getDate()-1);
+  const priorStart = new Date(priorEnd); priorStart.setDate(priorStart.getDate()-(rangeDays-1));
+  const priorStartISO = toISO(priorStart), priorEndISO = toISO(priorEnd);
+  const firstAvail = manifest.first_month+'-01';
+  if(priorStartISO < firstAvail) return {available:false};
+  try{
+    const priorAgg = await aggregateRange(priorStartISO, priorEndISO);
+    if(!priorAgg.days.length) return {available:false};
+    return {available:true, priorAgg, priorStartISO, priorEndISO};
+  }catch(err){
+    return {available:false};
+  }
+}
+
+function computeContributors(currentAgg, priorAgg){
+  // Per-service dollar delta between the two periods, ranked by magnitude of change.
+  const priorByName = new Map(priorAgg.services.map(s=>[s.ServiceName, s.BilledCost]));
+  const allNames = new Set([...currentAgg.services.map(s=>s.ServiceName), ...priorAgg.services.map(s=>s.ServiceName)]);
+  const currentByName = new Map(currentAgg.services.map(s=>[s.ServiceName, s]));
+  const contributors = [];
+  for(const name of allNames){
+    const currentSvc = currentByName.get(name);
+    const currentCost = currentSvc ? currentSvc.BilledCost : 0;
+    const priorCost = priorByName.get(name) || 0;
+    const delta = currentCost - priorCost;
+    if(Math.abs(delta) < 1) continue;
+    contributors.push({name, delta, currentCost, priorCost, meta: currentSvc});
+  }
+  contributors.sort((a,b)=> Math.abs(b.delta) - Math.abs(a.delta));
+  return contributors;
+}
+
+let contributorChart;
+let contributorViewMode = 'waterfall'; // 'waterfall' | 'stacked'
+
+function jumpToService(name){
+  const card = document.querySelector(`.svc-card[data-service="${CSS.escape(name)}"]`);
+  if(!card) return;
+  card.scrollIntoView({behavior:'smooth', block:'center'});
+  card.classList.add('expanded');
+  card.style.outline = '2px solid var(--purple)';
+  setTimeout(()=>{ card.style.outline = ''; }, 1500);
+}
+
+function renderContributors(agg){
+  const pop = agg.periodOverPeriod;
+  if(!pop || !pop.available){
+    document.getElementById('contributorTitle').textContent = 'Why did cost change?';
+    document.getElementById('contributorBody').innerHTML = `<div style="color:var(--text-faint); font-size:13px;">Not enough history before this period to compare against — need a full preceding period of the same length.</div>`;
+    document.getElementById('contributorChartWrap').style.display = 'none';
+    document.getElementById('contributorList').innerHTML = '';
+    document.getElementById('contributorRangeLabel').textContent = '';
+    return;
+  }
+  const currentStart = agg.days.length ? agg.days[0].date : '';
+  const currentEnd = agg.days.length ? agg.days[agg.days.length-1].date : '';
+  document.getElementById('contributorRangeLabel').textContent =
+    `Current period: ${currentStart} to ${currentEnd}  ·  Prior period: ${pop.priorStartISO} to ${pop.priorEndISO}`;
+
+  const totalDelta = agg.totalSpend - pop.priorAgg.totalSpend;
+  const pct = pop.priorAgg.totalSpend>0 ? Math.round(totalDelta/pop.priorAgg.totalSpend*100) : null;
+  document.getElementById('contributorTitle').textContent =
+    `Why did cost change? ${totalDelta>=0?'+':'-'}$${Math.abs(totalDelta).toLocaleString()}${pct!==null?` (${pct>=0?'+':''}${pct}%)`:''} vs. the preceding period`;
+
+  const contributors = computeContributors(agg, pop.priorAgg);
+  document.getElementById('contributorChartWrap').style.display = contributors.length ? '' : 'none';
+
+  // Ranked list — shows prior -> current, not just the delta, and is clickable to jump to that service's card
+  const list = contributors.map(c=>`
+    <div class="contributor-row" data-service="${c.name}" style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); cursor:pointer;">
+      <div style="width:16px; height:16px; border-radius:4px; background:${(c.meta&&c.meta.bg)||'var(--border)'}; color:${(c.meta&&c.meta.fg)||'var(--text-dim)'}; display:flex; align-items:center; justify-content:center; font-size:9px; flex-shrink:0;">${(c.meta&&c.meta.icon)||'•'}</div>
+      <div style="flex:1;">
+        <div style="font-size:13px;">${c.name}</div>
+        <div style="font-family:var(--mono); font-size:10px; color:var(--text-faint);">$${Math.round(c.priorCost).toLocaleString()} → $${Math.round(c.currentCost).toLocaleString()}</div>
+      </div>
+      <div style="font-family:var(--mono); font-size:12px; color:${c.delta>=0?'var(--danger)':'var(--good)'}; font-weight:700;">${c.delta>=0?'▲ +':'▼ -'}$${Math.abs(Math.round(c.delta)).toLocaleString()}</div>
+    </div>`).join('');
+  document.getElementById('contributorList').innerHTML = list || `<div style="color:var(--text-faint); font-size:13px;">No material per-service change vs. the preceding period.</div>`;
+  document.querySelectorAll('.contributor-row').forEach(row=>{
+    row.addEventListener('click', ()=> jumpToService(row.dataset.service));
+  });
+
+  drawContributorChart(agg, pop, contributors);
+}
+
+function drawContributorChart(agg, pop, contributors){
+  const ctx = document.getElementById('contributorChart');
+  if(contributorChart){ contributorChart.destroy(); contributorChart = null; }
+  if(!contributors.length) return;
+  const tickColor = getComputedStyle(document.body).getPropertyValue('--text-faint').trim();
+  const gridColor = getComputedStyle(document.body).getPropertyValue('--border').trim();
+
+  if(contributorViewMode === 'waterfall'){
+    const labels = ['Prior period', ...contributors.map(c=>c.name), 'This period'];
+    let running = pop.priorAgg.totalSpend;
+    const bases = [0]; const values = [pop.priorAgg.totalSpend]; const colors = ['#7C3AED'];
+    for(const c of contributors){
+      if(c.delta >= 0){ bases.push(running); values.push(c.delta); }
+      else { bases.push(running + c.delta); values.push(-c.delta); }
+      running += c.delta;
+      colors.push(c.delta>=0 ? '#DC2626' : '#16A34A');
+    }
+    bases.push(0); values.push(running); colors.push('#7C3AED');
+    contributorChart = new Chart(ctx, {
+      type:'bar',
+      data:{labels, datasets:[
+        {label:'base', data:bases, backgroundColor:'transparent', stack:'s'},
+        {label:'value', data:values, backgroundColor:colors, stack:'s'}
+      ]},
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        onClick:(e,els)=>{ if(els.length){ const idx=els[0].index; const name=labels[idx]; if(contributors.find(c=>c.name===name)) jumpToService(name); } },
+        plugins:{legend:{display:false}, tooltip:{filter:(item)=>item.datasetIndex===1, callbacks:{label:(c)=>'$'+Math.round(c.raw).toLocaleString()}}},
+        scales:{
+          x:{stacked:true, grid:{display:false}, ticks:{color:tickColor, font:{family:'IBM Plex Mono',size:9}, maxRotation:45, minRotation:45}},
+          y:{stacked:true, grid:{color:gridColor}, ticks:{color:tickColor, font:{family:'IBM Plex Mono',size:10}, callback:v=>'$'+v}}
+        }
+      }
+    });
+  } else {
+    // Stacked comparison: one bar for the prior period, one for the current period, each
+    // segmented by service so composition and total size can be compared side by side.
+    const allNames = Array.from(new Set([...agg.services.map(s=>s.ServiceName), ...pop.priorAgg.services.map(s=>s.ServiceName)]));
+    const priorByName = new Map(pop.priorAgg.services.map(s=>[s.ServiceName, s]));
+    const currentByName = new Map(agg.services.map(s=>[s.ServiceName, s]));
+    const datasets = allNames.map(name=>{
+      const meta = currentByName.get(name) || priorByName.get(name);
+      return {
+        label: name,
+        data: [priorByName.get(name)?priorByName.get(name).BilledCost:0, currentByName.get(name)?currentByName.get(name).BilledCost:0],
+        backgroundColor: (meta&&meta.fg) || '#7C3AED',
+        stack: 's'
+      };
+    });
+    contributorChart = new Chart(ctx, {
+      type:'bar',
+      data:{labels:['Prior period','This period'], datasets},
+      options:{
+        responsive:true, maintainAspectRatio:false, indexAxis:'y',
+        onClick:(e,els)=>{ if(els.length){ const name=datasets[els[0].datasetIndex].label; jumpToService(name); } },
+        plugins:{legend:{display:true, position:'bottom', labels:{color:tickColor, font:{family:'IBM Plex Mono',size:9}, boxWidth:10}}, tooltip:{callbacks:{label:(c)=>`${c.dataset.label}: $${Math.round(c.raw).toLocaleString()}`}}},
+        scales:{
+          x:{stacked:true, grid:{color:gridColor}, ticks:{color:tickColor, font:{family:'IBM Plex Mono',size:10}, callback:v=>'$'+v}},
+          y:{stacked:true, grid:{display:false}, ticks:{color:tickColor, font:{family:'IBM Plex Mono',size:11}}}
+        }
+      }
+    });
+  }
+}
+
+function renderAll(){
+  if(!currentAgg) return;
+  renderStats(currentAgg);
+  renderTrend(currentAgg);
+  renderServices(currentAgg);
+  renderOverPace(currentAgg);
+  renderContributors(currentAgg);
+}
+
+function shiftYearISO(iso, deltaYears){
+  const d = new Date(iso);
+  d.setFullYear(d.getFullYear()+deltaYears);
+  return toISO(d);
+}
+
+async function computeYoY(startISO, endISO){
+  const priorStart = shiftYearISO(startISO, -1);
+  const priorEnd = shiftYearISO(endISO, -1);
+  const firstAvail = manifest.first_month+'-01';
+  if(priorStart < firstAvail) return {available:false};
+  try{
+    const priorAgg = await aggregateRange(priorStart, priorEnd);
+    if(!priorAgg.days.length) return {available:false};
+    return {available:true, priorAgg, priorStart, priorEnd};
+  }catch(err){
+    return {available:false};
+  }
+}
+
+async function applyRange(startISO, endISO){
+  const grid = document.getElementById('serviceGrid');
+  const pill = document.getElementById('sourcePill');
+  const refreshBtn = document.getElementById('refreshBtn');
+  refreshBtn.classList.add('spinning');
+  grid.innerHTML = `<div class="load-state">loading ${startISO} → ${endISO}…</div>`;
+  try{
+    currentAgg = await aggregateRange(startISO, endISO);
+    currentAgg.yoy = await computeYoY(startISO, endISO);
+    currentAgg.periodOverPeriod = await computePeriodOverPeriod(startISO, endISO);
+    const isLive = manifest.source && manifest.source !== 'demo';
+    pill.textContent = isLive ? 'live · ' + (manifest.source === 'cur' ? 'CUR' : 'FOCUS') : 'demo data';
+    pill.className = 'source-pill ' + (isLive ? 'cur' : 'demo');
+    document.getElementById('updatedAt').textContent = 'as of ' + manifest.last_available_date;
+    renderAll();
+  }catch(err){
+    pill.textContent = 'error'; pill.className = 'source-pill error';
+    grid.innerHTML = `<div class="error-state">Couldn't load data for this range (${err.message}).</div>`;
+  }finally{
+    setTimeout(()=>refreshBtn.classList.remove('spinning'), 400);
+  }
+}
+
+function reapplyCurrentRange(){
+  const s = document.getElementById('startDate').value;
+  const e = document.getElementById('endDate').value;
+  if(s && e) applyRange(s,e);
+  computeMonthForecast().then(renderForecast);
+}
+document.getElementById('regionFilter').addEventListener('change', e=>{
+  currentFilter.region = e.target.value;
+  reapplyCurrentRange();
+  if(idleResourceData) renderIdleResources(idleResourceData);
+});
+document.getElementById('tagFilter').addEventListener('change', e=>{
+  const [tagKey, tagValue] = e.target.value.split('::');
+  currentFilter.tagKey = tagKey;
+  currentFilter.tagValue = tagValue || null;
+  reapplyCurrentRange();
+});
+
+document.getElementById('refreshBtn').addEventListener('click', ()=>{
+  monthCache.clear();
+  const s = document.getElementById('startDate').value;
+  const e = document.getElementById('endDate').value;
+  if(s && e) applyRange(s,e);
+  computeMonthForecast().then(renderForecast);
+  loadIdleResources();
+});
+
+document.getElementById('applyRange').addEventListener('click', ()=>{
+  const s = document.getElementById('startDate').value;
+  const e = document.getElementById('endDate').value;
+  if(!s || !e || s>e) return;
+  document.querySelectorAll('#presets button').forEach(b=>b.classList.remove('active'));
+  applyRange(s,e);
+});
+
+document.getElementById('contributorViewToggle').addEventListener('click', e=>{
+  if(e.target.tagName!=='BUTTON') return;
+  document.querySelectorAll('#contributorViewToggle button').forEach(b=>b.classList.remove('active'));
+  e.target.classList.add('active');
+  contributorViewMode = e.target.dataset.mode;
+  if(currentAgg) renderContributors(currentAgg);
+});
+
+document.getElementById('presets').addEventListener('click', e=>{
+  if(e.target.tagName!=='BUTTON') return;
+  document.querySelectorAll('#presets button').forEach(b=>b.classList.remove('active'));
+  e.target.classList.add('active');
+  const months = parseInt(e.target.dataset.months);
+  const end = new Date(manifest.last_available_date);
+  const start = new Date(end);
+  start.setMonth(start.getMonth()-months);
+  const firstAvail = new Date(manifest.first_month+'-01');
+  const clampedStart = start < firstAvail ? firstAvail : start;
+  document.getElementById('startDate').value = toISO(clampedStart);
+  document.getElementById('endDate').value = toISO(end);
+  applyRange(toISO(clampedStart), toISO(end));
+});
+
+// ---------- Month-end forecast (two free, non-API methods) ----------
+async function computeMonthForecast(){
+  const lastDate = manifest.last_available_date;
+  const d = new Date(lastDate);
+  const year = d.getFullYear(), month = d.getMonth();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const dayOfMonth = d.getDate();
+  const remainingDays = daysInMonth - dayOfMonth;
+  const monthStart = `${year}-${pad(month+1)}-01`;
+
+  const mtd = await aggregateRange(monthStart, lastDate);
+  if(!mtd.days.length) return null;
+
+  // Method A: simple daily-average trend extrapolation
+  const simpleForecast = Math.round(mtd.dailyAvg * daysInMonth);
+
+  // Method B: moving average with day-of-week adjustment
+  const dowSums = {}, dowCounts = {};
+  for(const day of mtd.days){
+    const dow = new Date(day.date).getDay();
+    dowSums[dow] = (dowSums[dow]||0) + day.BilledCost;
+    dowCounts[dow] = (dowCounts[dow]||0) + 1;
+  }
+  let projectedRemaining = 0;
+  for(let i=1;i<=remainingDays;i++){
+    const futureDate = new Date(year, month, dayOfMonth+i);
+    const dow = futureDate.getDay();
+    const dowAvg = dowCounts[dow] ? dowSums[dow]/dowCounts[dow] : mtd.dailyAvg;
+    projectedRemaining += dowAvg;
+  }
+  const weightedForecast = Math.round(mtd.totalSpend + projectedRemaining);
+
+  return {
+    simpleForecast, weightedForecast, mtdTotal: mtd.totalSpend,
+    daysInMonth, dayOfMonth, remainingDays,
+    monthLabel: d.toLocaleDateString('en-US',{month:'long',year:'numeric'})
+  };
+}
+
+function renderForecast(fc){
+  const panel = document.getElementById('forecastPanel');
+  const body = document.getElementById('forecastBody');
+  if(!fc || fc.remainingDays <= 0){
+    document.getElementById('forecastTitle').textContent = 'Month-end forecast';
+    body.innerHTML = `<div style="color:var(--text-faint); font-size:13px;">No forecast to show — the current month is already complete.</div>`;
+    return;
+  }
+  document.getElementById('forecastTitle').textContent = `Month-end forecast — ${fc.monthLabel}`;
+  body.innerHTML = `
+    <div class="forecast-box">
+      <div class="lbl">Method A · Daily-average trend</div>
+      <div class="num">$${fc.simpleForecast.toLocaleString()}</div>
+      <div class="note">Spends the same daily average for the rest of the month as seen so far.</div>
+    </div>
+    <div class="forecast-box">
+      <div class="lbl">Method B · Day-of-week weighted</div>
+      <div class="num">$${fc.weightedForecast.toLocaleString()}</div>
+      <div class="note">Projects each remaining day using its own weekday's historical average (e.g. weekends weighted separately from weekdays).</div>
+    </div>
+    <div class="forecast-box">
+      <div class="lbl">Month-to-date so far</div>
+      <div class="num">$${fc.mtdTotal.toLocaleString()}</div>
+      <div class="note">${fc.dayOfMonth} of ${fc.daysInMonth} days elapsed · ${fc.remainingDays} remaining</div>
+    </div>
+  `;
+}
+
+let idleResourceData = null;
+// ---------- Idle & unattached resources (snapshot, not date-range based) ----------
+async function loadIdleResources(){
+  const body = document.getElementById('idleBody');
+  body.innerHTML = `<div class="load-state">loading idle-resources.json…</div>`;
+  try{
+    const res = await fetch(`${DATA_DIR}/idle-resources.json`, {cache:'no-store'});
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    idleResourceData = await res.json();
+    renderIdleResources(idleResourceData);
+  }catch(err){
+    body.innerHTML = `<div class="error-state">Couldn't load idle-resources.json (${err.message}).</div>`;
+  }
+}
+
+function renderIdleResources(data){
+  const body = document.getElementById('idleBody');
+  let resources = data.resources || [];
+  if(currentFilter.region && currentFilter.region !== 'all'){
+    resources = resources.filter(r => r.region === currentFilter.region);
+  }
+  document.getElementById('idleTitle').textContent =
+    `Idle & unattached resources${currentFilter.region!=='all' ? ` — ${currentFilter.region}` : ''}`;
+
+  if(!resources.length){
+    body.innerHTML = `<div style="color:var(--text-faint); font-size:13px;">No idle or unattached resources found${currentFilter.region!=='all'?' in '+currentFilter.region:''}.</div>`;
+    return;
+  }
+  const totalMonthly = resources.reduce((s,r)=>s+r.monthly_cost_estimate, 0);
+  const summary = `<div class="idle-summary">${resources.length} idle resource${resources.length===1?'':'s'} found · potential savings if removed: <b>$${totalMonthly.toFixed(2)}/month</b></div>`;
+  const rows = resources.map(r => `
+    <div class="idle-row">
+      <span class="idle-type-badge">${r.type}</span>
+      <span class="idle-id">${r.resource_id}<br><span style="color:var(--text-faint);">${r.region}</span></span>
+      <span class="idle-detail">${r.detail}</span>
+      <span class="idle-cost">$${r.monthly_cost_estimate.toFixed(2)}/mo</span>
+    </div>`).join('');
+  body.innerHTML = summary + rows;
+}
+
+(async function init(){
+  await loadManifestAndSplits();
+  const firstAvail = manifest.first_month+'-01';
+  const lastAvail = manifest.last_available_date;
+  document.getElementById('startDate').min = firstAvail;
+  document.getElementById('startDate').max = lastAvail;
+  document.getElementById('endDate').min = firstAvail;
+  document.getElementById('endDate').max = lastAvail;
+  document.getElementById('availNote').textContent = `Data available from ${firstAvail} onward (from when the cost data export was enabled)`;
+
+  // default: 1M preset
+  document.querySelector('#presets button[data-months="1"]').click();
+  computeMonthForecast().then(renderForecast);
+  loadIdleResources();
+})();
+</script>
+</body>
+</html>

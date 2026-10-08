@@ -1,0 +1,26 @@
+{
+  "source": "demo",
+  "first_month": "2024-07",
+  "last_available_date": "2026-09-24",
+  "budget_monthly": 12000,
+  "generated_at": "2026-09-24T06:00:00Z",
+  "regions": [
+    "ap-south-1",
+    "eu-central-1",
+    "us-east-1"
+  ],
+  "tags": {
+    "env": [
+      "(untagged)",
+      "dev",
+      "prod",
+      "staging"
+    ],
+    "cost-center": [
+      "(untagged)",
+      "cc-101-engineering",
+      "cc-204-data-platform",
+      "cc-309-shared-services"
+    ]
+  }
+}

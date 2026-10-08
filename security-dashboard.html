@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWS Security &amp; Compliance</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F3F5FB; --bg-dot: rgba(124,92,252,0.07);
+    --panel:#FFFFFF; --panel-2:#F8F9FE; --border:#E4E8F2;
+    --text:#14162B; --text-dim:#6B7280; --text-faint:#9CA3AF;
+    --purple:#7C5CFC; --grad: linear-gradient(90deg, #7C3AED, #3B82F6 55%, #22D3EE);
+    --good:#16A34A; --danger:#DC2626; --warn:#D97706;
+    --shadow: 0 1px 2px rgba(20,22,43,0.04), 0 8px 24px rgba(20,22,43,0.05);
+    --mono:'IBM Plex Mono', monospace; --sans:'Inter', sans-serif;
+  }
+  [data-theme="dark"]{
+    --bg:#0B0D1A; --bg-dot: rgba(124,92,252,0.10);
+    --panel:#12142A; --panel-2:#181B36; --border:#262A4A;
+    --text:#EDEFFB; --text-dim:#9AA0C7; --text-faint:#666C99;
+    --good:#34D399; --danger:#F87171; --warn:#FBBF24;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--bg); color:var(--text); font-family:var(--sans); min-height:100vh;
+    background-image: radial-gradient(var(--bg-dot) 1px, transparent 1px); background-size:22px 22px;
+  }
+  .topbar{background:var(--grad); padding:14px 32px; color:#fff;}
+  .topbar-msg{font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px; max-width:1280px; margin:0 auto;}
+  .topbar-msg span.dim{font-weight:400; opacity:.9;}
+
+  header{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:16px 32px; border-bottom:1px solid var(--border); background:var(--panel);
+    flex-wrap:wrap; gap:14px;
+  }
+  .brand{display:flex; align-items:center; gap:12px;}
+  .logo{
+    width:40px; height:40px; border-radius:11px; background:var(--grad);
+    display:flex; align-items:center; justify-content:center; color:#fff; font-family:var(--mono); font-weight:700; font-size:15px;
+    box-shadow: var(--shadow);
+  }
+  .brand-text h1{font-size:19px; font-weight:800; letter-spacing:-0.02em;}
+
+  .header-controls{display:flex; align-items:center; gap:10px;}
+  .data-status{display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:11px;}
+  .source-pill{padding:3px 9px; border-radius:12px; font-weight:700; letter-spacing:.04em; font-size:10px; text-transform:uppercase;}
+  .source-pill.demo{background:#FEF3C7; color:#B45309;}
+  .source-pill.cur{background:#DCFCE7; color:#15803D;}
+  .source-pill.error{background:#FEE2E2; color:#B91C1C;}
+  .updated-at{color:var(--text-faint);}
+  .refresh-btn{
+    width:34px; height:34px; border-radius:9px; border:1px solid var(--border); background:var(--panel-2);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:15px; color:var(--text-dim);
+  }
+  .refresh-btn:hover{color:var(--purple); border-color:var(--purple);}
+  .refresh-btn.spinning{animation:spin .6s linear;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .theme-toggle{
+    width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:var(--panel-2);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; color:var(--text);
+  }
+
+  /* Period bar */
+  .period-bar{
+    background:var(--panel); border-bottom:1px solid var(--border); padding:14px 32px;
+    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  }
+  .period-bar-inner{max-width:1280px; margin:0 auto; width:100%; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;}
+  .presets{display:flex; gap:4px; background:var(--panel-2); border:1px solid var(--border); border-radius:9px; padding:4px;}
+  .presets button{
+    font-family:var(--mono); font-size:12px; color:var(--text-dim); background:transparent; border:none;
+    padding:7px 13px; border-radius:6px; cursor:pointer; font-weight:500;
+  }
+  .presets button.active{background:var(--grad); color:#fff; font-weight:700;}
+  .presets button:hover:not(.active){color:var(--text);}
+  .date-range{display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:12px; color:var(--text-dim);}
+  .date-range input[type="date"]{
+    font-family:var(--mono); font-size:12px; padding:7px 10px; border-radius:7px; border:1px solid var(--border);
+    background:var(--panel-2); color:var(--text);
+  }
+  .date-range .apply-btn{
+    background:var(--grad); color:#fff; border:none; font-family:var(--mono); font-weight:700; font-size:12px;
+    padding:8px 14px; border-radius:7px; cursor:pointer;
+  }
+  .avail-note{font-family:var(--mono); font-size:10px; color:var(--text-faint); margin-top:6px;}
+  .filter-label{font-family:var(--mono); font-size:11px; color:var(--text-dim); font-weight:500;}
+  .filter-select{
+    font-family:var(--mono); font-size:12px; padding:7px 10px; border-radius:7px; border:1px solid var(--border);
+    background:var(--panel-2); color:var(--text);
+  }
+
+  .wrap{max-width:1280px; margin:0 auto; padding:20px 32px 80px;}
+
+  .hero{
+    display:grid; grid-template-columns:280px 1fr; gap:0;
+    background:var(--panel); border:1px solid var(--border); border-radius:16px;
+    margin-bottom:20px; overflow:hidden; box-shadow:var(--shadow);
+  }
+  .meter-box{display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; border-right:1px solid var(--border);}
+  .meter-svg{width:200px; height:120px;}
+  .meter-readout{text-align:center; margin-top:-6px;}
+  .meter-readout .val{font-family:var(--mono); font-size:30px; font-weight:700; color:var(--purple);}
+  .meter-readout .lbl{font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.06em; margin-top:2px;}
+  .meter-tick{font-family:var(--mono); font-size:10px; fill:var(--text-faint);}
+
+  .stat-strip{display:flex; flex-direction:column;}
+  .stat-group{border-bottom:1px solid var(--border);}
+  .stat-group:last-child{border-bottom:none;}
+  .stat-group-label{font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-faint); padding:10px 22px 0;}
+  .stat-group-compare{background:var(--panel-2);}
+  .stat-group-row{display:grid; grid-template-columns:repeat(3,1fr);}
+  .stat-group-compare .stat-group-row{grid-template-columns:repeat(2,1fr);}
+  .stat{padding:14px 22px 20px; border-right:1px solid var(--border); display:flex; flex-direction:column; justify-content:center; gap:8px;}
+  .stat:last-child{border-right:none;}
+  .stat .lbl{font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.08em;}
+  .stat .num{font-family:var(--mono); font-size:22px; font-weight:700;}
+  .stat .delta{font-family:var(--mono); font-size:11px; display:flex; align-items:center; gap:4px; font-weight:500;}
+  .delta.up{color:var(--danger);} .delta.down{color:var(--good);} .delta.flat{color:var(--text-dim);}
+
+  .trend-panel{background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:22px 24px; margin-bottom:20px; box-shadow:var(--shadow);}
+  .panel-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;}
+  .panel-title{font-size:14px; font-weight:700; letter-spacing:-0.01em;}
+  .panel-sub{font-family:var(--mono); font-size:11px; color:var(--text-faint); margin-top:2px;}
+  .chart-wrap{height:220px;}
+  .forecast-box{flex:1; min-width:200px; background:var(--panel-2); border:1px solid var(--border); border-radius:10px; padding:16px;}
+  .forecast-box .lbl{font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-faint);}
+  .forecast-box .num{font-family:var(--mono); font-size:24px; font-weight:700; margin-top:6px;}
+  .forecast-box .note{font-size:11px; color:var(--text-dim); margin-top:6px; line-height:1.4;}
+
+  .section-label{font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--text-faint); margin:28px 0 12px 2px; font-weight:600;}
+  .service-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:14px;}
+  .svc-card{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:18px 20px; cursor:pointer; transition:.15s; box-shadow:var(--shadow);}
+  .svc-card:hover{border-color:var(--purple); transform:translateY(-1px);}
+  .svc-card.expanded{border-color:var(--purple); background:var(--panel-2);}
+  .svc-top{display:flex; justify-content:space-between; align-items:flex-start;}
+  .svc-icon-row{display:flex; align-items:center; gap:10px;}
+  .svc-badge{width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0;}
+  .svc-name{font-size:14px; font-weight:700;}
+  .pace-badge{
+    font-family:var(--mono); font-size:9px; font-weight:700; color:var(--danger);
+    background:color-mix(in srgb, var(--danger) 12%, transparent); padding:2px 6px; border-radius:8px; margin-left:6px; vertical-align:middle;
+  }
+  .svc-code{font-family:var(--mono); font-size:10px; color:var(--text-faint); margin-top:1px;}
+  .svc-caret{color:var(--text-faint); font-size:12px; transition:.2s;}
+  .svc-card.expanded .svc-caret{transform:rotate(90deg); color:var(--purple);}
+  .svc-cost{font-family:var(--mono); font-size:22px; font-weight:700; margin-top:12px; color:var(--text);}
+  .svc-bar-track{height:5px; background:var(--border); border-radius:3px; margin-top:12px; overflow:hidden;}
+  .svc-bar-fill{height:100%; background:var(--grad); border-radius:3px;}
+  .svc-meta{display:flex; justify-content:space-between; margin-top:8px; font-family:var(--mono); font-size:11px; color:var(--text-dim);}
+
+  .drilldown{max-height:0; overflow:hidden; transition:max-height .25s ease;}
+  .svc-card.expanded .drilldown{max-height:900px; margin-top:16px; padding-top:14px; border-top:1px solid var(--border);}
+  .dd-row{margin-bottom:12px;}
+  .dd-row-label{font-family:var(--mono); font-size:10px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px; font-weight:600;}
+  .dd-items{display:flex; flex-direction:column; gap:5px;}
+  .dd-item{display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer; padding:2px 4px; border-radius:5px;}
+  .dd-item:hover{background:var(--border);}
+  .dd-item-name{flex:1; color:var(--text-dim); display:flex; align-items:center; gap:4px;}
+  .dd-item-name .car{font-size:9px; color:var(--text-faint); transition:.2s;}
+  .dd-item.open .dd-item-name .car{transform:rotate(90deg); color:var(--purple);}
+  .dd-item-bar{height:5px; flex:2; background:var(--border); border-radius:3px; overflow:hidden;}
+  .dd-item-fill{height:100%; border-radius:3px; background:var(--grad);}
+  .dd-item-val{font-family:var(--mono); width:56px; text-align:right; color:var(--text); font-weight:500;}
+  .dd-subitems{max-height:0; overflow:hidden; transition:max-height .2s ease; padding-left:18px;}
+  .dd-item.open + .dd-subitems{max-height:200px; margin:4px 0 6px;}
+  .dd-subitem{display:flex; align-items:center; gap:8px; font-size:11px; padding:2px 0;}
+  .dd-subitem-name{flex:1; color:var(--text-faint);}
+  .dd-subitem-bar{height:4px; flex:2; background:var(--border); border-radius:2px; overflow:hidden;}
+  .dd-subitem-fill{height:100%; border-radius:2px; background:var(--text-faint);}
+  .dd-subitem-val{font-family:var(--mono); width:50px; text-align:right; color:var(--text-dim);}
+
+  .load-state, .error-state{grid-column:1/-1; text-align:center; padding:40px; color:var(--text-dim); font-family:var(--mono); font-size:13px;}
+  .error-state{color:var(--danger);}
+  .idle-summary{font-family:var(--mono); font-size:13px; color:var(--text); margin-bottom:14px; padding:10px 14px; background:var(--panel-2); border-radius:8px; border:1px solid var(--border);}
+  .idle-summary b{color:var(--good); font-size:15px;}
+  .idle-row{display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px;}
+  .idle-row:last-child{border-bottom:none;}
+  .idle-type-badge{font-family:var(--mono); font-size:10px; padding:3px 8px; border-radius:10px; background:var(--panel-2); color:var(--text-dim); flex-shrink:0; white-space:nowrap;}
+  .idle-id{font-family:var(--mono); font-size:11px; color:var(--text-dim); flex:1; word-break:break-all;}
+  .idle-detail{font-size:11px; color:var(--text-faint); flex:1;}
+  .idle-cost{font-family:var(--mono); font-size:13px; font-weight:700; color:var(--warn); flex-shrink:0;}
+
+  footer{
+    margin-top:44px; padding-top:24px; border-top:1px solid var(--border);
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;
+  }
+  .footer-brand{font-size:13px; color:var(--text-dim);}
+  .footer-brand b{color:var(--text); font-weight:700;}
+  .footer-links{display:flex; gap:16px; font-family:var(--mono); font-size:12px;}
+  .footer-links a{color:var(--purple); text-decoration:none;}
+  .footer-links a:hover{text-decoration:underline;}
+
+  @media (max-width:720px){
+    .hero{grid-template-columns:1fr;}
+    .meter-box{border-right:none; border-bottom:1px solid var(--border);}
+    .stat-group-row{grid-template-columns:repeat(2,1fr) !important;}
+    .stat{border-right:1px solid var(--border);}
+    .stat:nth-child(2n){border-right:none;}
+  }
+
+  /* Security page additions (built on the shared theme above) */
+  .stat-group-row.c3{grid-template-columns:repeat(3,1fr);}
+  .stat-group-row.c4{grid-template-columns:repeat(4,1fr);}
+  .delta.good{color:var(--good);} .delta.bad{color:var(--danger);}
+  .sev{font-family:var(--mono); font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap;}
+  .sev.critical{color:var(--danger); background:color-mix(in srgb, var(--danger) 12%, transparent);}
+  .sev.high{color:var(--warn); background:color-mix(in srgb, var(--warn) 14%, transparent);}
+  .sev.medium{color:var(--purple); background:color-mix(in srgb, var(--purple) 12%, transparent);}
+  .sev.low{color:var(--text-dim); background:var(--panel-2); border:1px solid var(--border);}
+  .sev.fixed{color:var(--good); background:color-mix(in srgb, var(--good) 12%, transparent);}
+  .filter-bar{display:flex; gap:18px; flex-wrap:wrap; align-items:center; margin:0 0 6px 2px;}
+  .filter-bar .grp{display:flex; align-items:center; gap:8px;}
+  .count-note{font-family:var(--mono); font-size:11px; color:var(--text-faint); margin:0 0 14px 2px;}
+  .find-head{display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;}
+  .find-title{font-size:14px; font-weight:700; line-height:1.35;}
+  .why{font-size:12px; color:var(--text-dim); line-height:1.5;}
+  .dd-title{font-family:var(--mono); font-size:10px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.06em; margin:12px 0 6px; font-weight:600;}
+  .fix-list{margin:0 0 0 18px; font-size:12px; color:var(--text-dim); line-height:1.7;}
+  .res-list{font-family:var(--mono); font-size:11px; color:var(--text-dim); word-break:break-all; line-height:1.7;}
+  .tag{display:inline-block; font-family:var(--mono); font-size:10px; color:var(--text-dim); border:1px solid var(--border); border-radius:6px; padding:1px 6px; margin:10px 4px 0 0;}
+  .fw-row{display:flex; gap:8px; align-items:center; padding:7px 0; border-top:1px solid var(--border); font-size:12px; color:var(--text-dim);}
+  .fw-row .nm{flex:1;}
+  .empty-state{grid-column:1/-1; text-align:center; padding:28px; color:var(--text-dim); font-family:var(--mono); font-size:12px;}
+  .svc-card.expanded .drilldown{max-height:1400px;}
+  .svc-bar-track.thin{margin-top:10px;}
+  @media (max-width:720px){ .stat-group-row.c4{grid-template-columns:repeat(2,1fr);} .stat-group-row.c3{grid-template-columns:repeat(2,1fr);} .filter-bar{gap:10px;} }
+</style>
+</head>
+<body data-theme="light">
+
+<div class="topbar">
+  <div class="topbar-msg">⚡ <span id="bannerLead">Security alert</span><span class="dim" id="bannerText">— checking open findings…</span></div>
+</div>
+
+<header>
+  <div class="brand">
+    <div class="logo">&gt;_</div>
+    <div class="brand-text"><h1>AWS Security &amp; Compliance</h1></div>
+  </div>
+  <div class="header-controls">
+    <div class="data-status">
+      <span class="source-pill" id="sourcePill">—</span>
+      <span class="updated-at" id="updatedAt"></span>
+    </div>
+    <button class="refresh-btn" id="refreshBtn" title="Reload data">⟳</button>
+    <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="meter-box">
+      <svg class="meter-svg" viewBox="0 0 200 120" id="meterSvg"></svg>
+      <div class="meter-readout">
+        <div class="val" id="meterVal">0%</div>
+        <div class="lbl" id="meterLbl">security score</div>
+      </div>
+    </div>
+    <div class="stat-strip" id="statStrip"></div>
+  </div>
+
+  <div class="trend-panel">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">Security score trend</div>
+        <div class="panel-sub" id="trendSub">score after each scan</div>
+      </div>
+    </div>
+    <div class="chart-wrap" id="trendWrap"><canvas id="trendChart"></canvas></div>
+  </div>
+
+  <div class="section-label">Compliance frameworks — click to see failing checks</div>
+  <div class="service-grid" id="fwGrid"></div>
+  <div class="avail-note" style="margin-top:10px;" id="fwNote"></div>
+
+  <div class="section-label">Findings — click to expand</div>
+  <div class="filter-bar">
+    <div class="grp"><label class="filter-label" for="fSev">Severity</label>
+      <select id="fSev" class="filter-select">
+        <option value="all">All</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option>
+      </select></div>
+    <div class="grp"><label class="filter-label" for="fSvc">Service</label>
+      <select id="fSvc" class="filter-select"><option value="all">All</option></select></div>
+    <div class="grp"><label class="filter-label" for="fReg">Region</label>
+      <select id="fReg" class="filter-select"><option value="all">All</option></select></div>
+    <div class="grp"><label class="filter-label" for="fFw">Framework</label>
+      <select id="fFw" class="filter-select"><option value="all">All</option></select></div>
+    <div class="grp"><label class="filter-label" for="fStt">Status</label>
+      <select id="fStt" class="filter-select"><option value="open">Open</option><option value="fixed">Fixed</option></select></div>
+  </div>
+  <div class="count-note" id="countNote"></div>
+  <div class="service-grid" id="findGrid"><div class="load-state">Loading scan results…</div></div>
+
+  <div class="trend-panel" id="notRunPanel" style="margin-top:20px; display:none;">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title" id="notRunTitle">Checks that could not run</div>
+        <div class="panel-sub">excluded from the score until the missing access is granted</div>
+      </div>
+    </div>
+    <div id="notRunBody"></div>
+  </div>
+
+  <footer>
+    <div class="footer-brand">Built by <b>Anuradha Iyer</b> — Cloud / DevOps / AI Engineering</div>
+    <div class="footer-links">
+      <a href="https://linkedin.com/in/iyeranuradha" target="_blank" rel="noopener">LinkedIn</a>
+      <a href="https://github.com/AnuradhaVIyer" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </footer>
+</div>
+
+<script>
+// ---------- Theme ----------
+const themeToggle = document.getElementById('themeToggle');
+themeToggle.addEventListener('click', ()=>{
+  const next = document.body.getAttribute('data-theme')==='light' ? 'dark' : 'light';
+  document.body.setAttribute('data-theme', next);
+  themeToggle.textContent = next==='light' ? '🌙' : '☀️';
+  if(D) renderAll();
+});
+
+// ---------- Config ----------
+const DATA_DIR = './data/security';
+const SEV = {critical:'Critical', high:'High', medium:'Medium', low:'Low'};
+const FW = {HIPAA:'HIPAA-aligned', CIS:'CIS', SOC2:'SOC 2'};
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDate = d => d ? new Date(d+'T00:00:00Z').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}) : '';
+const fmtShort = d => d ? new Date(d+'T00:00:00Z').toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'}) : '';
+const css = name => getComputedStyle(document.body).getPropertyValue(name).trim();
+
+let M = null, D = null, H = [], cat = {}, trendChart = null;
+const state = {sev:'all', svc:'all', reg:'all', fw:'all', stt:'open'};
+
+async function getJSON(path){
+  const r = await fetch(path, {cache:'no-cache'});
+  if(!r.ok) throw new Error(path+' returned '+r.status);
+  return r.json();
+}
+
+// ---------- Render ----------
+function drawMeter(score){
+  const pct = Math.max(0, Math.min(score/100, 1));
+  const svg = $('meterSvg');
+  const cx=100, cy=105, r=85;
+  const arcPoint=(a)=>[cx+r*Math.cos(a), cy-r*Math.sin(a)];
+  const angle = Math.PI - pct*Math.PI;
+  const [sx,sy]=arcPoint(Math.PI), [ex,ey]=arcPoint(0), [px,py]=arcPoint(angle);
+  const trackColor = css('--border'), textColor = css('--text');
+  const bg = `<path d="M${sx},${sy} A${r},${r} 0 0 1 ${ex},${ey}" stroke="${trackColor}" stroke-width="14" fill="none" stroke-linecap="round"/>`;
+  const fg = pct>0 ? `<defs><linearGradient id="gaugeGrad" gradientUnits="userSpaceOnUse" x1="${sx}" y1="${sy}" x2="${ex}" y2="${ey}">
+      <stop offset="0%" stop-color="#7C3AED"/><stop offset="55%" stop-color="#3B82F6"/><stop offset="100%" stop-color="#22D3EE"/>
+    </linearGradient></defs><path d="M${sx},${sy} A${r},${r} 0 0 1 ${px},${py}" stroke="url(#gaugeGrad)" stroke-width="14" fill="none" stroke-linecap="round"/>` : '';
+  let ticks='';
+  for(let i=0;i<=10;i++){
+    const a = Math.PI - (i/10)*Math.PI;
+    ticks+=`<line x1="${cx+(r+11)*Math.cos(a)}" y1="${cy-(r+11)*Math.sin(a)}" x2="${cx+(r+17)*Math.cos(a)}" y2="${cy-(r+17)*Math.sin(a)}" stroke="${trackColor}" stroke-width="2"/>`;
+  }
+  const [nx,ny]=[cx+(r-8)*Math.cos(angle), cy-(r-8)*Math.sin(angle)];
+  svg.innerHTML = bg+fg+ticks+
+    `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${textColor}" stroke-width="2"/>`+
+    `<circle cx="${cx}" cy="${cy}" r="4" fill="${textColor}"/>`+
+    `<text x="${cx-r-5}" y="${cy+14}" class="meter-tick">0</text>`+
+    `<text x="${cx+r-14}" y="${cy+14}" class="meter-tick">100</text>`;
+  $('meterVal').textContent = score==null ? 'n/a' : score+'%';
+}
+
+function statCard(lbl, num, delta, dir, color){
+  return `<div class="stat"><div class="lbl">${lbl}</div><div class="num"${color?` style="color:${color}"`:''}>${num}</div>
+    <div class="delta ${dir||'flat'}">${dir==='good'?'▲':dir==='bad'?'●':'·'} ${esc(delta)}</div></div>`;
+}
+
+function renderHero(){
+  const s = D.summary;
+  const prev = H.length>1 ? H[H.length-2] : null;
+  let change = {num:'n/a', delta:'no earlier scan', dir:'flat'};
+  if(prev && s.score!=null && prev.score!=null){
+    const diff = s.score - prev.score;
+    change = {num:(diff>0?'+':'')+diff+' pts', delta:'vs. scan of '+fmtShort(prev.date), dir: diff>0?'good':diff<0?'bad':'flat'};
+  }
+  const accountText = (D.accounts && D.accounts[0]) ? D.accounts[0].name+' · '+D.accounts[0].id : D.customer;
+  $('statStrip').innerHTML = `
+    <div class="stat-group">
+      <div class="stat-group-label">Open findings — ${esc(accountText)}</div>
+      <div class="stat-group-row c4">
+        ${statCard('Critical', s.critical, s.critical?'needs attention':'none open', s.critical?'bad':'flat', s.critical?'var(--danger)':'')}
+        ${statCard('High', s.high, s.high?'fix soon':'none open', 'flat', s.high?'var(--warn)':'')}
+        ${statCard('Medium', s.medium, 'plan a fix', 'flat')}
+        ${statCard('Low', s.low, 'housekeeping', 'flat')}
+      </div>
+    </div>
+    <div class="stat-group stat-group-compare">
+      <div class="stat-group-label">Progress</div>
+      <div class="stat-group-row c3">
+        ${statCard('Score change', change.num, change.delta, change.dir)}
+        ${statCard('Fixed recently', s.fixed_recent, 'last 30 days', s.fixed_recent?'good':'flat')}
+        ${statCard('Checks not run', s.checks_not_run, s.checks_not_run?'see below':'all checks ran', s.checks_not_run?'bad':'flat')}
+      </div>
+    </div>`;
+  $('meterLbl').textContent = 'security score · '+s.open+' open finding'+(s.open===1?'':'s');
+  drawMeter(s.score);
+}
+
+function renderBanner(){
+  const crit = D.findings.filter(f=>f.status==='open' && cat[f.check_id].severity==='critical');
+  if(crit.length){
+    $('bannerLead').textContent = 'Security alert';
+    $('bannerText').textContent = `— ${crit.length} critical finding${crit.length===1?'':'s'} open: ${crit.map(f=>cat[f.check_id].name).slice(0,2).join('; ')}${crit.length>2?'…':''}`;
+  }else{
+    $('bannerLead').textContent = 'Security status';
+    $('bannerText').textContent = '— no critical findings open';
+  }
+}
+
+function renderTrend(){
+  const wrap = $('trendWrap');
+  if(trendChart){ trendChart.destroy(); trendChart = null; }
+  if(typeof Chart==='undefined' || H.length<2){
+    wrap.innerHTML = '<div class="load-state">The trend appears after the second scan.</div>';
+    $('trendSub').textContent = 'score after each scan';
+    return;
+  }
+  wrap.innerHTML = '<canvas id="trendChart"></canvas>';
+  $('trendSub').textContent = `${fmtDate(H[0].date)} to ${fmtDate(H[H.length-1].date)}, ${H.length} scans`;
+  const data = H.map(h=>h.score);
+  const lo = Math.max(0, Math.floor((Math.min(...data.filter(v=>v!=null))-5)/10)*10);
+  trendChart = new Chart($('trendChart'), {
+    type:'line',
+    data:{labels:H.map(h=>fmtShort(h.date)), datasets:[{label:'security score', data:data, borderColor:'#7C3AED', backgroundColor:'rgba(124,58,237,0.10)', fill:true, tension:.3, pointRadius:0, pointHoverRadius:4, borderWidth:2.5}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{y:{min:lo, max:100, grid:{color:css('--border')}, ticks:{color:css('--text-faint'), callback:v=>v+'%', font:{family:'IBM Plex Mono', size:10}}},
+              x:{grid:{display:false}, ticks:{color:css('--text-faint'), maxRotation:0, autoSkip:true, font:{family:'IBM Plex Mono', size:10}}}}}
+  });
+}
+
+function renderFrameworks(){
+  $('fwGrid').innerHTML = D.frameworks.map(f=>{
+    const rows = f.failing.map(x=>{ const c = cat[x.check_id];
+      return `<div class="fw-row"><span class="sev ${c.severity}">${SEV[c.severity]}</span><span class="nm">${esc(c.name)}</span></div>`; }).join('');
+    const sc = f.score==null ? 0 : f.score;
+    return `<div class="svc-card" data-expand="1">
+      <div class="svc-top">
+        <div class="svc-icon-row"><div class="svc-badge" style="background:#EDE9FE;color:#7C3AED;">🛡️</div>
+          <div><div class="svc-name">${esc(f.name)}</div><div class="svc-code">${f.checks_clean} of ${f.checks_total} checks passing</div></div></div>
+        <div class="svc-caret">▶</div>
+      </div>
+      <div class="svc-cost">${f.score==null?'n/a':f.score+'%'}</div>
+      <div class="svc-bar-track"><div class="svc-bar-fill" style="width:${sc}%"></div></div>
+      <div class="svc-meta"><span>${f.failing.length} failing check${f.failing.length===1?'':'s'}</span><span></span></div>
+      <div class="drilldown">${rows || '<div class="why">All checks for this framework pass.</div>'}</div>
+    </div>`;
+  }).join('');
+  $('fwNote').textContent = 'HIPAA-aligned covers technical safeguards checked from configuration settings. It is not a certification of HIPAA compliance, which also covers policies, training, and physical safeguards.';
+}
+
+function populateServices(){
+  const svcs = [...new Set(D.catalog.map(c=>c.service))].sort();
+  $('fSvc').innerHTML = '<option value="all">All</option>' + svcs.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+  $('fSvc').value = state.svc;
+  const regs = [...new Set(D.findings.flatMap(f=>f.regions||[]))].sort();
+  const hasGlobal = D.findings.some(f=>!(f.regions && f.regions.length));
+  $('fReg').innerHTML = '<option value="all">All</option>' + regs.map(r=>`<option value="${esc(r)}">${esc(r)}</option>`).join('') + (hasGlobal ? '<option value="global">Global</option>' : '');
+  $('fReg').value = state.reg;
+  const fws = [...new Set(D.catalog.flatMap(c=>c.frameworks))];
+  $('fFw').innerHTML = '<option value="all">All</option>' + fws.map(k=>`<option value="${esc(k)}">${esc(FW[k]||k)}</option>`).join('');
+  $('fFw').value = state.fw;
+}
+
+function renderFindings(){
+  const list = D.findings.filter(f=>f.status===state.stt && (state.sev==='all'||cat[f.check_id].severity===state.sev) && (state.svc==='all'||cat[f.check_id].service===state.svc) && (state.reg==='all' || (state.reg==='global' ? !(f.regions && f.regions.length) : (f.regions||[]).includes(state.reg))) && (state.fw==='all'||cat[f.check_id].frameworks.includes(state.fw)));
+  $('countNote').textContent = list.length+' finding'+(list.length===1?'':'s');
+  if(!list.length){ $('findGrid').innerHTML = '<div class="empty-state">No findings match these filters.</div>'; return; }
+  $('findGrid').innerHTML = list.map(f=>{
+    const c = cat[f.check_id];
+    const since = f.status==='fixed' ? `fixed ${fmtShort(f.fixed_on)}` : `${f.resources} resource${f.resources===1?'':'s'} · open since ${fmtShort(f.first_seen)}`;
+    const more = f.resources>f.resource_ids.length ? `<div>and ${f.resources-f.resource_ids.length} more</div>` : '';
+    const res = (f.status==='open' && f.resource_ids.length) ? `<div class="dd-title">Affected resources</div><div class="res-list">${f.resource_ids.map(r=>`<div>${esc(r)}</div>`).join('')}${more}</div>` : '';
+    return `<div class="svc-card" data-expand="1">
+      <div class="svc-top">
+        <div style="flex:1; min-width:0;">
+          <div class="find-head"><span class="sev ${c.severity}">${SEV[c.severity]}</span>${f.status==='fixed'?'<span class="sev fixed">Fixed</span>':''}</div>
+          <div class="find-title">${esc(c.name)}</div>
+          <div class="svc-code" style="margin-top:4px;">${esc(c.service)}${f.regions && f.regions.length ? ' · '+esc(f.regions.join(', ')) : ''} · ${esc(since)}</div>
+        </div>
+        <div class="svc-caret">▶</div>
+      </div>
+      <div class="drilldown">
+        <div class="why">${esc(c.why)}</div>
+        <div class="dd-title">How to fix</div>
+        <ol class="fix-list">${c.fix.map(t=>`<li>${esc(t)}</li>`).join('')}</ol>
+        ${res}
+        <div>${c.frameworks.map(k=>`<span class="tag">${esc(FW[k]||k)}</span>`).join('')}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderNotRun(){
+  const panel = $('notRunPanel');
+  if(!D.errors || !D.errors.length){ panel.style.display='none'; return; }
+  panel.style.display='block';
+  $('notRunTitle').textContent = `${D.errors.length} check${D.errors.length===1?'':'s'} could not run`;
+  $('notRunBody').innerHTML = D.errors.map(e=>`<div class="idle-row"><span class="idle-type-badge">${esc((cat[e.check_id]||{}).service||'')}</span><span class="idle-id">${esc((cat[e.check_id]||{}).name||e.check_id)}</span><span class="idle-detail">${esc(e.message)}</span></div>`).join('');
+}
+
+function renderAll(){
+  renderBanner(); renderHero(); renderTrend(); renderFrameworks(); renderFindings(); renderNotRun();
+}
+
+// ---------- Load ----------
+function showError(msg){
+  $('sourcePill').textContent = 'error'; $('sourcePill').className = 'source-pill error';
+  $('bannerLead').textContent = 'Data unavailable'; $('bannerText').textContent = '— scan results could not be loaded';
+  $('findGrid').innerHTML = `<div class="error-state">Could not load scan results. Serve this page from a web server or an S3 bucket (not directly from disk) with the data folder beside it.<br><br>${esc(msg)}</div>`;
+}
+async function load(){
+  M = await getJSON(DATA_DIR+'/security-manifest.json');
+  D = await getJSON(DATA_DIR+'/'+M.latest);
+  H = M.history || [];
+  cat = {}; D.catalog.forEach(c=>cat[c.id]=c);
+  const live = M.source && M.source!=='demo';
+  $('sourcePill').textContent = live ? 'live' : 'demo data';
+  $('sourcePill').className = 'source-pill ' + (live ? 'cur' : 'demo');
+  $('updatedAt').textContent = 'scan of '+fmtDate(D.scan_date);
+  if(live) document.title = 'AWS Security & Compliance';
+  populateServices();
+  renderAll();
+}
+async function boot(){ try{ await load(); }catch(e){ showError(e.message); } }
+
+// ---------- Events ----------
+document.addEventListener('click', e=>{
+  const card = e.target.closest('[data-expand]');
+  if(card) card.classList.toggle('expanded');
+});
+$('fSev').addEventListener('change', e=>{ state.sev = e.target.value; if(D) renderFindings(); });
+$('fSvc').addEventListener('change', e=>{ state.svc = e.target.value; if(D) renderFindings(); });
+$('fReg').addEventListener('change', e=>{ state.reg = e.target.value; if(D) renderFindings(); });
+$('fFw').addEventListener('change', e=>{ state.fw = e.target.value; if(D) renderFindings(); });
+$('fStt').addEventListener('change', e=>{ state.stt = e.target.value; if(D) renderFindings(); });
+$('refreshBtn').addEventListener('click', async ()=>{
+  const b = $('refreshBtn'); b.classList.add('spinning');
+  try{ await load(); }catch(e){ showError(e.message); }
+  setTimeout(()=>b.classList.remove('spinning'), 400);
+});
+boot();
+</script>
+</body>
+</html>

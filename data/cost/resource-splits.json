@@ -1,0 +1,102 @@
+{
+  "EC2": [
+    [
+      "m5.large",
+      0.45
+    ],
+    [
+      "t3.micro",
+      0.3
+    ],
+    [
+      "EBS volumes",
+      0.25
+    ]
+  ],
+  "RDS": [
+    [
+      "db.r5.large",
+      0.55
+    ],
+    [
+      "Storage",
+      0.3
+    ],
+    [
+      "Backups",
+      0.15
+    ]
+  ],
+  "S3": [
+    [
+      "Standard storage",
+      0.6
+    ],
+    [
+      "Requests",
+      0.25
+    ],
+    [
+      "Data transfer",
+      0.15
+    ]
+  ],
+  "EKS": [
+    [
+      "Cluster hours",
+      0.4
+    ],
+    [
+      "Worker nodes",
+      0.45
+    ],
+    [
+      "Load balancers",
+      0.15
+    ]
+  ],
+  "CloudWatch": [
+    [
+      "Metrics",
+      0.5
+    ],
+    [
+      "Logs",
+      0.35
+    ],
+    [
+      "Alarms",
+      0.15
+    ]
+  ],
+  "Data Transfer": [
+    [
+      "Inter-region",
+      0.55
+    ],
+    [
+      "Internet egress",
+      0.45
+    ]
+  ],
+  "ECR": [
+    [
+      "Storage",
+      0.7
+    ],
+    [
+      "Data transfer",
+      0.3
+    ]
+  ],
+  "Secrets Manager": [
+    [
+      "Secrets",
+      0.8
+    ],
+    [
+      "API calls",
+      0.2
+    ]
+  ]
+}

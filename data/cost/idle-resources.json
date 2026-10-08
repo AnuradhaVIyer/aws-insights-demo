@@ -1,0 +1,12 @@
+{
+  "source": "demo",
+  "generated_at": "2026-09-24T06:00:00Z",
+  "resources": [
+    {"type": "EBS Volume", "resource_id": "vol-0a1b2c3d4e5f67890", "region": "us-east-1", "idle_since": "2026-08-02", "monthly_cost_estimate": 12.40, "detail": "Unattached for 53 days"},
+    {"type": "EBS Volume", "resource_id": "vol-0f9e8d7c6b5a43210", "region": "eu-central-1", "idle_since": "2026-09-01", "monthly_cost_estimate": 8.00, "detail": "Unattached for 23 days"},
+    {"type": "Elastic IP", "resource_id": "eipalloc-0123456789abcdef0", "region": "eu-central-1", "idle_since": "2026-09-10", "monthly_cost_estimate": 3.60, "detail": "Not associated with a running instance"},
+    {"type": "Elastic IP", "resource_id": "eipalloc-0fedcba987654321f", "region": "us-east-1", "idle_since": "2026-07-18", "monthly_cost_estimate": 3.60, "detail": "Not associated with a running instance"},
+    {"type": "Load Balancer", "resource_id": "app/legacy-service-alb/50dc6c495c0c9188", "region": "us-east-1", "idle_since": "2026-07-15", "monthly_cost_estimate": 16.20, "detail": "No healthy targets registered for 71 days"},
+    {"type": "Load Balancer", "resource_id": "app/staging-test-alb/1a2b3c4d5e6f7890", "region": "ap-south-1", "idle_since": "2026-09-05", "monthly_cost_estimate": 16.20, "detail": "No healthy targets registered for 19 days"}
+  ]
+}
