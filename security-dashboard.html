@@ -229,6 +229,8 @@
   .svc-card.expanded .drilldown{max-height:1400px;}
   .svc-bar-track.thin{margin-top:10px;}
   @media (max-width:720px){ .stat-group-row.c4{grid-template-columns:repeat(2,1fr);} .stat-group-row.c3{grid-template-columns:repeat(2,1fr);} .filter-bar{gap:10px;} }
+  .nav-link{font-family:var(--mono); font-size:12px; font-weight:600; color:var(--text-dim); text-decoration:none; border:1px solid var(--border); border-radius:var(--radius); padding:8px 12px; background:var(--panel); white-space:nowrap;}
+  .nav-link:hover{color:var(--text);}
 </style>
 </head>
 <body data-theme="light">
@@ -243,6 +245,8 @@
     <div class="brand-text"><h1>AWS Security &amp; Compliance</h1></div>
   </div>
   <div class="header-controls">
+    <a class="nav-link" href="index.html">Overview</a>
+    <a class="nav-link" id="seriesLink" href="series.html" style="display:none">12-Week Security Series Companion</a>
     <div class="data-status">
       <span class="source-pill" id="sourcePill">—</span>
       <span class="updated-at" id="updatedAt"></span>
@@ -401,7 +405,7 @@ function renderHero(){
       <div class="stat-group-row c3">
         ${statCard('Score change', change.num, change.delta, change.dir)}
         ${statCard('Fixed recently', s.fixed_recent, 'last 30 days', s.fixed_recent?'good':'flat')}
-        ${statCard('Checks not run', s.checks_not_run, s.checks_not_run?'see below':'all checks ran', s.checks_not_run?'bad':'flat')}
+        ${statCard('Checks not run', s.checks_not_run, s.checks_not_run?'see below':(s.not_applicable?s.not_applicable+' not applicable':'all checks ran'), s.checks_not_run?'bad':'flat')}
       </div>
     </div>`;
   $('meterLbl').textContent = 'security score · '+s.open+' open finding'+(s.open===1?'':'s');
@@ -428,7 +432,9 @@ function renderTrend(){
     return;
   }
   wrap.innerHTML = '<canvas id="trendChart"></canvas>';
-  $('trendSub').textContent = `${fmtDate(H[0].date)} to ${fmtDate(H[H.length-1].date)}, ${H.length} scans`;
+  const lastV = H[H.length-1].v, firstNew = H.findIndex(h=>h.v===lastV);
+  const note = (lastV && firstNew>0) ? ` · checks changed on ${fmtDate(H[firstNew].date)}, so earlier scores are not directly comparable` : '';
+  $('trendSub').textContent = `${fmtDate(H[0].date)} to ${fmtDate(H[H.length-1].date)}, ${H.length} scans${note}`;
   const data = H.map(h=>h.score);
   const lo = Math.max(0, Math.floor((Math.min(...data.filter(v=>v!=null))-5)/10)*10);
   trendChart = new Chart($('trendChart'), {
@@ -525,6 +531,7 @@ async function load(){
   D = await getJSON(DATA_DIR+'/'+M.latest);
   H = M.history || [];
   cat = {}; D.catalog.forEach(c=>cat[c.id]=c);
+  $('seriesLink').style.display = (D.series && D.series.length) ? '' : 'none';
   const live = M.source && M.source!=='demo';
   $('sourcePill').textContent = live ? 'live' : 'demo data';
   $('sourcePill').className = 'source-pill ' + (live ? 'cur' : 'demo');

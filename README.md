@@ -2,6 +2,11 @@
 
 Sample-data demo of dashboards organised around the six pillars of the AWS Well-Architected Framework.
 
+| Page | Shows |
+|---|---|
+| `index.html` | Overview: overall score and one card per pillar |
+| `series.html` | Companion page for the 12-week security series |
+
 | Pillar | Status | Page |
 |---|---|---|
 | Cost Optimization | Available | `cost-dashboard.html` |

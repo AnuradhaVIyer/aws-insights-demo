@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AWS Insights — Well-Architected review dashboards</title>
+<title>AWS Insights — overview</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -202,28 +203,35 @@
     .stat:nth-child(2n){border-right:none;}
   }
 
-  /* Landing page additions (built on the shared theme above) */
-  .intro{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-sm); padding:28px; margin-bottom:8px;}
-  .intro h2{font-size:22px; font-weight:800; letter-spacing:-0.02em; margin:0 0 8px;}
-  .intro p{font-size:14px; color:var(--text-dim); line-height:1.6; margin:0; max-width:720px;}
-  .pillar-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px;}
-  .pillar{display:flex; flex-direction:column; text-decoration:none; color:inherit; cursor:default;}
-  a.pillar{cursor:pointer;}
-  .pillar .svc-top{margin-bottom:12px;}
-  .pillar-desc{font-size:13px; color:var(--text-dim); line-height:1.55; margin:0 0 14px; flex:1;}
-  .status{font-family:var(--mono); font-size:10px; font-weight:700; padding:3px 9px; border-radius:10px; text-transform:uppercase; letter-spacing:.05em; white-space:nowrap;}
-  .status.live{color:var(--good); background:color-mix(in srgb, var(--good) 12%, transparent);}
-  .status.planned{color:var(--text-dim); background:var(--panel-2); border:1px solid var(--border);}
-  .pillar-cta{font-family:var(--mono); font-size:12px; font-weight:600; color:var(--purple);}
-  .pillar.planned{opacity:.78;}
-  .pillar.planned:hover{transform:none; box-shadow:var(--shadow-sm); border-color:var(--border);}
+  .stat-group-row.c4{grid-template-columns:repeat(4,1fr);}
+  .stat-group-row.c3{grid-template-columns:repeat(3,1fr);}
+  .sev{font-family:var(--mono); font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap;}
+  .sev.critical{color:var(--danger); background:color-mix(in srgb, var(--danger) 12%, transparent);}
+  .sev.high{color:var(--warn); background:color-mix(in srgb, var(--warn) 14%, transparent);}
+  .sev.medium{color:var(--purple); background:color-mix(in srgb, var(--purple) 12%, transparent);}
+  .sev.low{color:var(--text-dim); background:var(--panel-2); border:1px solid var(--border);}
+  .sev.fixed{color:var(--good); background:color-mix(in srgb, var(--good) 12%, transparent);}
+  .nav-link{font-family:var(--mono); font-size:12px; font-weight:600; color:var(--text-dim); text-decoration:none; border:1px solid var(--border); border-radius:var(--radius); padding:8px 12px; background:var(--panel); white-space:nowrap;}
+  .nav-link:hover{color:var(--text);}
+  .fw-row{display:flex; gap:8px; align-items:center; padding:7px 0; border-top:1px solid var(--border); font-size:12px; color:var(--text-dim);}
+  .fw-row .nm{flex:1;} .fw-row .vl{font-family:var(--mono); color:var(--text);}
+  .fw-row .nt{display:block; font-size:11px; color:var(--text-faint);}
+  .dd-title{font-family:var(--mono); font-size:10px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.06em; margin:12px 0 6px; font-weight:600;}
+  .open-link{display:inline-block; margin-top:12px; font-family:var(--mono); font-size:12px; font-weight:600; color:var(--purple); text-decoration:none;}
+  .pillar-dim{opacity:.78; cursor:default;}
+  .pillar-dim:hover{transform:none; box-shadow:var(--shadow-sm); border-color:var(--border);}
+  .pillar-desc{font-size:13px; color:var(--text-dim); line-height:1.55; margin:12px 0 0;}
   .disclaimer{font-family:var(--mono); font-size:11px; color:var(--text-faint); line-height:1.6; margin:18px 2px 0;}
+  .why{font-size:12px; color:var(--text-dim); line-height:1.5;}
+  .res-list{font-family:var(--mono); font-size:11px; color:var(--text-dim);}
+  .svc-card.expanded .drilldown{max-height:1400px;}
+  @media (max-width:720px){ .stat-group-row.c4{grid-template-columns:repeat(2,1fr);} .stat-group-row.c3{grid-template-columns:repeat(2,1fr);} }
 </style>
 </head>
 <body data-theme="light">
 
 <div class="topbar">
-  <div class="topbar-msg">⚡ <span>Demo</span><span class="dim">— every figure on these pages is sample data; no real account information is shown</span></div>
+  <div class="topbar-msg">⚡ <span id="bannerLead">Overview</span><span class="dim" id="bannerText">— loading pillar summaries…</span></div>
 </div>
 
 <header>
@@ -232,76 +240,33 @@
     <div class="brand-text"><h1>AWS Insights</h1></div>
   </div>
   <div class="header-controls">
+    <div class="data-status">
+      <span class="source-pill" id="sourcePill">—</span>
+      <span class="updated-at" id="updatedAt"></span>
+    </div>
+    <button class="refresh-btn" id="refreshBtn" title="Reload data">⟳</button>
     <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
   </div>
 </header>
 
 <div class="wrap">
 
-  <div class="intro">
-    <h2>Well-Architected review dashboards for your AWS account</h2>
-    <p>One set of dashboards organised around the six pillars of the AWS Well-Architected Framework. Each pillar reads configuration and billing data from your own account and shows what to fix first. Your data stays in your own S3 bucket, and the dashboards read plain JSON files.</p>
+  <div class="hero">
+    <div class="meter-box">
+      <svg class="meter-svg" viewBox="0 0 200 120" id="meterSvg"></svg>
+      <div class="meter-readout">
+        <div class="val" id="meterVal">—</div>
+        <div class="lbl" id="meterLbl">overall score</div>
+      </div>
+    </div>
+    <div class="stat-strip" id="statStrip"></div>
   </div>
 
-  <div class="section-label">The six pillars — two are available today</div>
-  <div class="pillar-grid">
-    <a class="svc-card pillar live" href="cost-dashboard.html">
-      <div class="svc-top">
-        <div class="svc-icon-row"><div class="svc-badge" style="background:#EDE9FE;color:#7C3AED;">💰</div>
-          <div><div class="svc-name">Cost Optimization</div><div class="svc-code">Cost dashboard</div></div></div>
-        <span class="status live">Available · demo</span>
-      </div>
-      <p class="pillar-desc">Spend by service, region, and tag. Month-end forecast, budget meter, year-over-year comparison, services trending over pace, and idle resources.</p>
-      <div class="pillar-cta">Open the demo →</div>
-    </a>
-    <a class="svc-card pillar live" href="security-dashboard.html">
-      <div class="svc-top">
-        <div class="svc-icon-row"><div class="svc-badge" style="background:#DBEAFE;color:#2563EB;">🛡️</div>
-          <div><div class="svc-name">Security</div><div class="svc-code">Security and compliance</div></div></div>
-        <span class="status live">Available · demo</span>
-      </div>
-      <p class="pillar-desc">Twenty configuration checks with severity scoring. HIPAA-aligned, CIS, and SOC 2 views, with fix steps for every finding.</p>
-      <div class="pillar-cta">Open the demo →</div>
-    </a>
-    <div class="svc-card pillar planned">
-      <div class="svc-top">
-        <div class="svc-icon-row"><div class="svc-badge" style="background:#DCFCE7;color:#16A34A;">♻️</div>
-          <div><div class="svc-name">Reliability</div><div class="svc-code">Backups and resilience</div></div></div>
-        <span class="status planned">Planned</span>
-      </div>
-      <p class="pillar-desc">Backups switched on, databases without Multi-AZ, missing recent snapshots, and single points of failure.</p>
-      
-    </div>
-    <div class="svc-card pillar planned">
-      <div class="svc-top">
-        <div class="svc-icon-row"><div class="svc-badge" style="background:#FEF3C7;color:#D97706;">⚙️</div>
-          <div><div class="svc-name">Operational Excellence</div><div class="svc-code">Operations and governance</div></div></div>
-        <span class="status planned">Planned</span>
-      </div>
-      <p class="pillar-desc">Tagging coverage, expiring certificates, outdated runtimes, service quotas near their limit, and alarm coverage.</p>
-      
-    </div>
-    <div class="svc-card pillar planned">
-      <div class="svc-top">
-        <div class="svc-icon-row"><div class="svc-badge" style="background:#FCE7F3;color:#DB2777;">⚡</div>
-          <div><div class="svc-name">Performance Efficiency</div><div class="svc-code">Right-sizing</div></div></div>
-        <span class="status planned">Planned</span>
-      </div>
-      <p class="pillar-desc">Oversized or old-generation instances, missing auto scaling, and storage classes that do not match usage.</p>
-      
-    </div>
-    <div class="svc-card pillar planned">
-      <div class="svc-top">
-        <div class="svc-icon-row"><div class="svc-badge" style="background:#CFFAFE;color:#0891B2;">🌱</div>
-          <div><div class="svc-name">Sustainability</div><div class="svc-code">Efficient use of resources</div></div></div>
-        <span class="status planned">Planned</span>
-      </div>
-      <p class="pillar-desc">Graviton adoption, idle and unattached resources, and workloads that could run in lower-impact regions.</p>
-      
-    </div>
-  </div>
+  <div class="section-label">Well-Architected pillars — click an enabled pillar for details</div>
+  <div class="service-grid" id="pillarGrid"><div class="load-state">Loading pillar summaries…</div></div>
+  <p class="disclaimer"><a class="open-link" style="margin-top:0;" href="series.html">12-Week Security Series Companion →</a></p>
 
-  <p class="disclaimer">Pillar names follow the AWS Well-Architected Framework. AWS Insights is an independent tool and is not provided or endorsed by AWS. Pillars marked Planned are not yet available.</p>
+  <p class="disclaimer">The overall score is the simple average of the enabled pillars. It is not an official AWS Well-Architected Review. Pillar names follow the AWS Well-Architected Framework. AWS Insights is an independent tool and is not provided or endorsed by AWS.</p>
 
   <footer>
     <div class="footer-brand">Built by <b>Anuradha Iyer</b> — Cloud / DevOps / AI Engineering</div>
@@ -313,12 +278,171 @@
 </div>
 
 <script>
-const themeToggle = document.getElementById('themeToggle');
-themeToggle.addEventListener('click', () => {
-  const next = document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDate = d => d ? new Date(d+'T00:00:00Z').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}) : '';
+const css = name => getComputedStyle(document.body).getPropertyValue(name).trim();
+const themeToggle = $('themeToggle');
+themeToggle.addEventListener('click', ()=>{
+  const next = document.body.getAttribute('data-theme')==='light' ? 'dark' : 'light';
   document.body.setAttribute('data-theme', next);
-  themeToggle.textContent = next === 'light' ? '🌙' : '☀️';
+  themeToggle.textContent = next==='light' ? '🌙' : '☀️';
+  if(typeof rerender==='function') rerender();
 });
+document.addEventListener('click', e=>{
+  const card = e.target.closest('[data-expand]');
+  if(card && !e.target.closest('a')) card.classList.toggle('expanded');
+});
+
+const DATA_DIR = './data';
+const PILLARS = [
+  {id:'security', folder:'security', title:'Security', sub:'Security and compliance', icon:'🛡️', bg:'#DBEAFE', fg:'#2563EB', built:true,
+   desc:'Thirty-one configuration checks with severity scoring and HIPAA-aligned, CIS, and SOC 2 views.'},
+  {id:'cost', folder:'cost', title:'Cost Optimization', sub:'Cost dashboard', icon:'💰', bg:'#EDE9FE', fg:'#7C3AED', built:false, soon:true,
+   desc:'Spend by service, region, and tag. Forecast, budget meter, year-over-year comparison, and idle resources.'},
+  {id:'reliability', folder:'reliability', title:'Reliability', sub:'Backups and resilience', icon:'♻️', bg:'#DCFCE7', fg:'#16A34A', built:false,
+   desc:'Backups switched on, databases without Multi-AZ, missing recent snapshots, and single points of failure.'},
+  {id:'operations', folder:'operations', title:'Operational Excellence', sub:'Operations and governance', icon:'⚙️', bg:'#FEF3C7', fg:'#D97706', built:false,
+   desc:'Tagging coverage, expiring certificates, outdated runtimes, service quotas near their limit, and alarm coverage.'},
+  {id:'performance', folder:'performance', title:'Performance Efficiency', sub:'Right-sizing', icon:'⚡', bg:'#FCE7F3', fg:'#DB2777', built:false,
+   desc:'Oversized or old-generation instances, missing auto scaling, and storage classes that do not match usage.'},
+  {id:'sustainability', folder:'sustainability', title:'Sustainability', sub:'Efficient use of resources', icon:'🌱', bg:'#CFFAFE', fg:'#0891B2', built:false,
+   desc:'Graviton adoption, idle and unattached resources, and workloads that could run in lower-impact regions.'}
+];
+let SUMMARIES = {}, networkFailures = 0;
+
+const status = s => s==null ? ['No score','low'] : s>=80 ? ['Good','fixed'] : s>=60 ? ['Fair','high'] : ['Needs attention','critical'];
+
+async function loadSummary(p){
+  try{
+    const r = await fetch(DATA_DIR+'/'+p.folder+'/summary.json', {cache:'no-cache'});
+    return r.ok ? await r.json() : null;
+  }catch(e){ networkFailures++; return null; }
+}
+
+function drawMeter(score){
+  const pct = score==null ? 0 : Math.max(0, Math.min(score/100, 1));
+  const svg = $('meterSvg');
+  const cx=100, cy=105, r=85;
+  const arcPoint=(a)=>[cx+r*Math.cos(a), cy-r*Math.sin(a)];
+  const angle = Math.PI - pct*Math.PI;
+  const [sx,sy]=arcPoint(Math.PI), [ex,ey]=arcPoint(0), [px,py]=arcPoint(angle);
+  const trackColor = css('--border'), textColor = css('--text');
+  const bg = `<path d="M${sx},${sy} A${r},${r} 0 0 1 ${ex},${ey}" stroke="${trackColor}" stroke-width="14" fill="none" stroke-linecap="round"/>`;
+  const fg = pct>0 ? `<defs><linearGradient id="gaugeGrad" gradientUnits="userSpaceOnUse" x1="${sx}" y1="${sy}" x2="${ex}" y2="${ey}">
+      <stop offset="0%" stop-color="#7C3AED"/><stop offset="55%" stop-color="#3B82F6"/><stop offset="100%" stop-color="#22D3EE"/>
+    </linearGradient></defs><path d="M${sx},${sy} A${r},${r} 0 0 1 ${px},${py}" stroke="url(#gaugeGrad)" stroke-width="14" fill="none" stroke-linecap="round"/>` : '';
+  let ticks='';
+  for(let i=0;i<=10;i++){
+    const a = Math.PI - (i/10)*Math.PI;
+    ticks+=`<line x1="${cx+(r+11)*Math.cos(a)}" y1="${cy-(r+11)*Math.sin(a)}" x2="${cx+(r+17)*Math.cos(a)}" y2="${cy-(r+17)*Math.sin(a)}" stroke="${trackColor}" stroke-width="2"/>`;
+  }
+  const [nx,ny]=[cx+(r-8)*Math.cos(angle), cy-(r-8)*Math.sin(angle)];
+  svg.innerHTML = bg+fg+ticks+
+    `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${textColor}" stroke-width="2"/>`+
+    `<circle cx="${cx}" cy="${cy}" r="4" fill="${textColor}"/>`+
+    `<text x="${cx-r-5}" y="${cy+14}" class="meter-tick">0</text>`+
+    `<text x="${cx+r-14}" y="${cy+14}" class="meter-tick">100</text>`;
+}
+
+function statCard(lbl, num, delta, color){
+  return `<div class="stat"><div class="lbl">${lbl}</div><div class="num"${color?` style="color:${color}"`:''}>${num}</div><div class="delta flat">· ${esc(delta)}</div></div>`;
+}
+
+function enabledPillars(){ return PILLARS.filter(p=>SUMMARIES[p.id]); }
+
+function renderHero(){
+  const en = enabledPillars();
+  const scored = en.filter(p=>SUMMARIES[p.id].score!=null);
+  const overall = scored.length ? Math.round(scored.reduce((s,p)=>s+SUMMARIES[p.id].score,0)/scored.length) : null;
+  drawMeter(overall);
+  $('meterVal').textContent = overall==null ? 'n/a' : overall+'%';
+  $('meterLbl').textContent = `overall score · based on ${en.length} of ${PILLARS.length} pillars`;
+  const attention = scored.filter(p=>SUMMARIES[p.id].score<60).length;
+  const sorted = [...scored].sort((a,b)=>SUMMARIES[a.id].score-SUMMARIES[b.id].score);
+  const weakest = sorted[0], strongest = sorted[sorted.length-1];
+  $('statStrip').innerHTML = `
+    <div class="stat-group">
+      <div class="stat-group-label">Pillars</div>
+      <div class="stat-group-row c4">
+        ${statCard('Enabled', `${en.length} of ${PILLARS.length}`, en.length<PILLARS.length ? `${PILLARS.length-en.length} not enabled yet` : 'all enabled')}
+        ${statCard('Needs attention', attention, attention ? 'score below 60' : 'none below 60', attention?'var(--danger)':'')}
+        ${statCard('Weakest', weakest ? SUMMARIES[weakest.id].score+'%' : 'n/a', weakest ? weakest.title : 'no scores yet')}
+        ${statCard('Strongest', strongest ? SUMMARIES[strongest.id].score+'%' : 'n/a', strongest ? strongest.title : 'no scores yet')}
+      </div>
+    </div>`;
+}
+
+function renderBanner(){
+  const en = enabledPillars();
+  const demo = en.some(p=>SUMMARIES[p.id].source==='demo');
+  const latest = en.map(p=>SUMMARIES[p.id].as_of).sort().pop();
+  const stale = !demo && en.filter(p=>(Date.now()-new Date(SUMMARIES[p.id].as_of+'T00:00:00Z'))/86400000 > 14);
+  if(demo){
+    $('bannerLead').textContent = 'Demo';
+    $('bannerText').textContent = '— every figure on these pages is sample data; no real account information is shown';
+  }else if(en.length){
+    $('bannerLead').textContent = 'Overview';
+    $('bannerText').textContent = `— data as of ${fmtDate(latest)}` + (stale.length ? `; ${stale.map(p=>p.title).join(', ')} data is more than 14 days old` : '');
+  }else{
+    $('bannerLead').textContent = 'No data yet';
+    $('bannerText').textContent = '— no pillar has produced a summary';
+  }
+  $('sourcePill').textContent = demo ? 'demo data' : (en.length ? 'live' : '—');
+  $('sourcePill').className = 'source-pill ' + (demo ? 'demo' : (en.length ? 'cur' : ''));
+  $('updatedAt').textContent = latest ? 'as of '+fmtDate(latest) : '';
+}
+
+function renderGrid(){
+  $('pillarGrid').innerHTML = PILLARS.map(p=>{
+    const s = SUMMARIES[p.id];
+    const badge = `<div class="svc-badge" style="background:${p.bg};color:${p.fg};">${p.icon}</div>`;
+    if(!s){
+      const label = p.soon ? 'Coming next' : (p.built ? 'Not enabled' : 'Planned');
+      return `<div class="svc-card pillar-dim"><div class="svc-top"><div class="svc-icon-row">${badge}
+        <div><div class="svc-name">${esc(p.title)}</div><div class="svc-code">${esc(p.sub)}</div></div></div>
+        <span class="sev low">${label}</span></div><p class="pillar-desc">${esc(p.desc)}</p></div>`;
+    }
+    const [label, cls] = status(s.score);
+    const metrics = (s.metrics||[]).map(m=>`<div class="fw-row"><span class="nm">${esc(m.label)}</span><span class="vl">${esc(m.value)}</span></div>`).join('');
+    const breakdown = (s.breakdown||[]).map(b=>`<div class="fw-row"><span class="nm">${esc(b.label)}${b.note?`<span class="nt">${esc(b.note)}</span>`:''}</span><span class="vl">${esc(b.value)}</span></div>`).join('');
+    const sc = s.score==null ? 0 : s.score;
+    return `<div class="svc-card" data-expand="1">
+      <div class="svc-top"><div class="svc-icon-row">${badge}
+        <div><div class="svc-name">${esc(p.title)}</div><div class="svc-code">as of ${fmtDate(s.as_of)}</div></div></div>
+        <span class="sev ${cls}">${label}</span></div>
+      <div class="svc-cost">${s.score==null?'n/a':s.score+'%'}</div>
+      <div class="svc-bar-track"><div class="svc-bar-fill" style="width:${sc}%"></div></div>
+      <div class="svc-meta"><span>${esc(s.headline||'')}</span><span class="svc-caret">▶</span></div>
+      <div class="drilldown">
+        <div class="dd-title">Key numbers</div>${metrics}
+        ${breakdown?`<div class="dd-title">How the score is made up</div>${breakdown}`:''}
+        <a class="open-link" href="${esc(s.link||p.id+'-dashboard.html')}">Open dashboard →</a>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function showAll(){ renderBanner(); renderHero(); renderGrid(); }
+function rerender(){ renderHero(); }
+
+async function load(){
+  networkFailures = 0;
+  const built = PILLARS.filter(p=>p.built);
+  const results = await Promise.all(built.map(loadSummary));
+  SUMMARIES = {};
+  built.forEach((p,i)=>{ if(results[i]) SUMMARIES[p.id] = results[i]; });
+  if(networkFailures===built.length){
+    $('sourcePill').textContent = 'error'; $('sourcePill').className = 'source-pill error';
+    $('bannerLead').textContent = 'Data unavailable'; $('bannerText').textContent = '— summaries could not be loaded';
+    $('pillarGrid').innerHTML = '<div class="error-state">Could not load the pillar summaries. Serve this page from a web server or an S3 bucket (not directly from disk) with the data folder beside it.</div>';
+    return;
+  }
+  showAll();
+}
+$('refreshBtn').addEventListener('click', async ()=>{ const b=$('refreshBtn'); b.classList.add('spinning'); await load(); setTimeout(()=>b.classList.remove('spinning'),400); });
+load();
 </script>
 </body>
 </html>

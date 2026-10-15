@@ -1,0 +1,50 @@
+{
+ "schema": "1.0",
+ "pillar": "security",
+ "title": "Security",
+ "score": 65,
+ "as_of": "2026-10-04",
+ "source": "demo",
+ "headline": "1 critical and 3 high findings open",
+ "metrics": [
+  {
+   "label": "Open findings",
+   "value": "13"
+  },
+  {
+   "label": "Critical",
+   "value": "1"
+  },
+  {
+   "label": "High",
+   "value": "3"
+  },
+  {
+   "label": "Fixed recently",
+   "value": "6"
+  }
+ ],
+ "breakdown": [
+  {
+   "label": "HIPAA-aligned technical checks",
+   "value": "73%"
+  },
+  {
+   "label": "CIS AWS Foundations",
+   "value": "69%"
+  },
+  {
+   "label": "SOC 2",
+   "value": "63%"
+  },
+  {
+   "label": "Checks not run",
+   "value": "0"
+  },
+  {
+   "label": "Not applicable",
+   "value": "0"
+  }
+ ],
+ "link": "security-dashboard.html"
+}

@@ -1,0 +1,45 @@
+{
+ "schema": "1.0",
+ "pillar": "cost",
+ "title": "Cost Optimization",
+ "score": 84,
+ "as_of": "2026-09-24",
+ "source": "demo",
+ "headline": "Over pace: projected $12,279 against a $12,000 budget",
+ "metrics": [
+  {
+   "label": "Month-end forecast",
+   "value": "$12,279"
+  },
+  {
+   "label": "Monthly budget",
+   "value": "$12,000"
+  },
+  {
+   "label": "Idle resources",
+   "value": "$60 a month"
+  },
+  {
+   "label": "Tagged spend",
+   "value": "76%"
+  }
+ ],
+ "breakdown": [
+  {
+   "label": "Budget pace",
+   "value": "37 of 40",
+   "note": "Projected 102% of budget"
+  },
+  {
+   "label": "Idle waste",
+   "value": "30 of 30",
+   "note": "Idle resources are 0.5% of spend"
+  },
+  {
+   "label": "Tag coverage",
+   "value": "17 of 30",
+   "note": "76% of spend fully tagged"
+  }
+ ],
+ "link": "cost-dashboard.html"
+}

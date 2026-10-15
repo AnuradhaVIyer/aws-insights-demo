@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWS Security series — 12 weeks, 31 checks</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F3F5FB; --bg-dot: rgba(124,92,252,0.07);
+    --panel:#FFFFFF; --panel-2:#F8F9FE; --border:#E4E8F2;
+    --text:#14162B; --text-dim:#6B7280; --text-faint:#9CA3AF;
+    --purple:#7C5CFC; --grad: linear-gradient(90deg, #7C3AED, #3B82F6 55%, #22D3EE);
+    --good:#16A34A; --danger:#DC2626; --warn:#D97706;
+    --shadow: 0 1px 2px rgba(20,22,43,0.04), 0 8px 24px rgba(20,22,43,0.05);
+    --mono:'IBM Plex Mono', monospace; --sans:'Inter', sans-serif;
+  }
+  [data-theme="dark"]{
+    --bg:#0B0D1A; --bg-dot: rgba(124,92,252,0.10);
+    --panel:#12142A; --panel-2:#181B36; --border:#262A4A;
+    --text:#EDEFFB; --text-dim:#9AA0C7; --text-faint:#666C99;
+    --good:#34D399; --danger:#F87171; --warn:#FBBF24;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--bg); color:var(--text); font-family:var(--sans); min-height:100vh;
+    background-image: radial-gradient(var(--bg-dot) 1px, transparent 1px); background-size:22px 22px;
+  }
+  .topbar{background:var(--grad); padding:14px 32px; color:#fff;}
+  .topbar-msg{font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px; max-width:1280px; margin:0 auto;}
+  .topbar-msg span.dim{font-weight:400; opacity:.9;}
+
+  header{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:16px 32px; border-bottom:1px solid var(--border); background:var(--panel);
+    flex-wrap:wrap; gap:14px;
+  }
+  .brand{display:flex; align-items:center; gap:12px;}
+  .logo{
+    width:40px; height:40px; border-radius:11px; background:var(--grad);
+    display:flex; align-items:center; justify-content:center; color:#fff; font-family:var(--mono); font-weight:700; font-size:15px;
+    box-shadow: var(--shadow);
+  }
+  .brand-text h1{font-size:19px; font-weight:800; letter-spacing:-0.02em;}
+
+  .header-controls{display:flex; align-items:center; gap:10px;}
+  .data-status{display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:11px;}
+  .source-pill{padding:3px 9px; border-radius:12px; font-weight:700; letter-spacing:.04em; font-size:10px; text-transform:uppercase;}
+  .source-pill.demo{background:#FEF3C7; color:#B45309;}
+  .source-pill.cur{background:#DCFCE7; color:#15803D;}
+  .source-pill.error{background:#FEE2E2; color:#B91C1C;}
+  .updated-at{color:var(--text-faint);}
+  .refresh-btn{
+    width:34px; height:34px; border-radius:9px; border:1px solid var(--border); background:var(--panel-2);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:15px; color:var(--text-dim);
+  }
+  .refresh-btn:hover{color:var(--purple); border-color:var(--purple);}
+  .refresh-btn.spinning{animation:spin .6s linear;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .theme-toggle{
+    width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:var(--panel-2);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; color:var(--text);
+  }
+
+  /* Period bar */
+  .period-bar{
+    background:var(--panel); border-bottom:1px solid var(--border); padding:14px 32px;
+    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  }
+  .period-bar-inner{max-width:1280px; margin:0 auto; width:100%; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;}
+  .presets{display:flex; gap:4px; background:var(--panel-2); border:1px solid var(--border); border-radius:9px; padding:4px;}
+  .presets button{
+    font-family:var(--mono); font-size:12px; color:var(--text-dim); background:transparent; border:none;
+    padding:7px 13px; border-radius:6px; cursor:pointer; font-weight:500;
+  }
+  .presets button.active{background:var(--grad); color:#fff; font-weight:700;}
+  .presets button:hover:not(.active){color:var(--text);}
+  .date-range{display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:12px; color:var(--text-dim);}
+  .date-range input[type="date"]{
+    font-family:var(--mono); font-size:12px; padding:7px 10px; border-radius:7px; border:1px solid var(--border);
+    background:var(--panel-2); color:var(--text);
+  }
+  .date-range .apply-btn{
+    background:var(--grad); color:#fff; border:none; font-family:var(--mono); font-weight:700; font-size:12px;
+    padding:8px 14px; border-radius:7px; cursor:pointer;
+  }
+  .avail-note{font-family:var(--mono); font-size:10px; color:var(--text-faint); margin-top:6px;}
+  .filter-label{font-family:var(--mono); font-size:11px; color:var(--text-dim); font-weight:500;}
+  .filter-select{
+    font-family:var(--mono); font-size:12px; padding:7px 10px; border-radius:7px; border:1px solid var(--border);
+    background:var(--panel-2); color:var(--text);
+  }
+
+  .wrap{max-width:1280px; margin:0 auto; padding:20px 32px 80px;}
+
+  .hero{
+    display:grid; grid-template-columns:280px 1fr; gap:0;
+    background:var(--panel); border:1px solid var(--border); border-radius:16px;
+    margin-bottom:20px; overflow:hidden; box-shadow:var(--shadow);
+  }
+  .meter-box{display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; border-right:1px solid var(--border);}
+  .meter-svg{width:200px; height:120px;}
+  .meter-readout{text-align:center; margin-top:-6px;}
+  .meter-readout .val{font-family:var(--mono); font-size:30px; font-weight:700; color:var(--purple);}
+  .meter-readout .lbl{font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.06em; margin-top:2px;}
+  .meter-tick{font-family:var(--mono); font-size:10px; fill:var(--text-faint);}
+
+  .stat-strip{display:flex; flex-direction:column;}
+  .stat-group{border-bottom:1px solid var(--border);}
+  .stat-group:last-child{border-bottom:none;}
+  .stat-group-label{font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-faint); padding:10px 22px 0;}
+  .stat-group-compare{background:var(--panel-2);}
+  .stat-group-row{display:grid; grid-template-columns:repeat(3,1fr);}
+  .stat-group-compare .stat-group-row{grid-template-columns:repeat(2,1fr);}
+  .stat{padding:14px 22px 20px; border-right:1px solid var(--border); display:flex; flex-direction:column; justify-content:center; gap:8px;}
+  .stat:last-child{border-right:none;}
+  .stat .lbl{font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.08em;}
+  .stat .num{font-family:var(--mono); font-size:22px; font-weight:700;}
+  .stat .delta{font-family:var(--mono); font-size:11px; display:flex; align-items:center; gap:4px; font-weight:500;}
+  .delta.up{color:var(--danger);} .delta.down{color:var(--good);} .delta.flat{color:var(--text-dim);}
+
+  .trend-panel{background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:22px 24px; margin-bottom:20px; box-shadow:var(--shadow);}
+  .panel-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;}
+  .panel-title{font-size:14px; font-weight:700; letter-spacing:-0.01em;}
+  .panel-sub{font-family:var(--mono); font-size:11px; color:var(--text-faint); margin-top:2px;}
+  .chart-wrap{height:220px;}
+  .forecast-box{flex:1; min-width:200px; background:var(--panel-2); border:1px solid var(--border); border-radius:10px; padding:16px;}
+  .forecast-box .lbl{font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-faint);}
+  .forecast-box .num{font-family:var(--mono); font-size:24px; font-weight:700; margin-top:6px;}
+  .forecast-box .note{font-size:11px; color:var(--text-dim); margin-top:6px; line-height:1.4;}
+
+  .section-label{font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--text-faint); margin:28px 0 12px 2px; font-weight:600;}
+  .service-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:14px;}
+  .svc-card{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:18px 20px; cursor:pointer; transition:.15s; box-shadow:var(--shadow);}
+  .svc-card:hover{border-color:var(--purple); transform:translateY(-1px);}
+  .svc-card.expanded{border-color:var(--purple); background:var(--panel-2);}
+  .svc-top{display:flex; justify-content:space-between; align-items:flex-start;}
+  .svc-icon-row{display:flex; align-items:center; gap:10px;}
+  .svc-badge{width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0;}
+  .svc-name{font-size:14px; font-weight:700;}
+  .pace-badge{
+    font-family:var(--mono); font-size:9px; font-weight:700; color:var(--danger);
+    background:color-mix(in srgb, var(--danger) 12%, transparent); padding:2px 6px; border-radius:8px; margin-left:6px; vertical-align:middle;
+  }
+  .svc-code{font-family:var(--mono); font-size:10px; color:var(--text-faint); margin-top:1px;}
+  .svc-caret{color:var(--text-faint); font-size:12px; transition:.2s;}
+  .svc-card.expanded .svc-caret{transform:rotate(90deg); color:var(--purple);}
+  .svc-cost{font-family:var(--mono); font-size:22px; font-weight:700; margin-top:12px; color:var(--text);}
+  .svc-bar-track{height:5px; background:var(--border); border-radius:3px; margin-top:12px; overflow:hidden;}
+  .svc-bar-fill{height:100%; background:var(--grad); border-radius:3px;}
+  .svc-meta{display:flex; justify-content:space-between; margin-top:8px; font-family:var(--mono); font-size:11px; color:var(--text-dim);}
+
+  .drilldown{max-height:0; overflow:hidden; transition:max-height .25s ease;}
+  .svc-card.expanded .drilldown{max-height:900px; margin-top:16px; padding-top:14px; border-top:1px solid var(--border);}
+  .dd-row{margin-bottom:12px;}
+  .dd-row-label{font-family:var(--mono); font-size:10px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px; font-weight:600;}
+  .dd-items{display:flex; flex-direction:column; gap:5px;}
+  .dd-item{display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer; padding:2px 4px; border-radius:5px;}
+  .dd-item:hover{background:var(--border);}
+  .dd-item-name{flex:1; color:var(--text-dim); display:flex; align-items:center; gap:4px;}
+  .dd-item-name .car{font-size:9px; color:var(--text-faint); transition:.2s;}
+  .dd-item.open .dd-item-name .car{transform:rotate(90deg); color:var(--purple);}
+  .dd-item-bar{height:5px; flex:2; background:var(--border); border-radius:3px; overflow:hidden;}
+  .dd-item-fill{height:100%; border-radius:3px; background:var(--grad);}
+  .dd-item-val{font-family:var(--mono); width:56px; text-align:right; color:var(--text); font-weight:500;}
+  .dd-subitems{max-height:0; overflow:hidden; transition:max-height .2s ease; padding-left:18px;}
+  .dd-item.open + .dd-subitems{max-height:200px; margin:4px 0 6px;}
+  .dd-subitem{display:flex; align-items:center; gap:8px; font-size:11px; padding:2px 0;}
+  .dd-subitem-name{flex:1; color:var(--text-faint);}
+  .dd-subitem-bar{height:4px; flex:2; background:var(--border); border-radius:2px; overflow:hidden;}
+  .dd-subitem-fill{height:100%; border-radius:2px; background:var(--text-faint);}
+  .dd-subitem-val{font-family:var(--mono); width:50px; text-align:right; color:var(--text-dim);}
+
+  .load-state, .error-state{grid-column:1/-1; text-align:center; padding:40px; color:var(--text-dim); font-family:var(--mono); font-size:13px;}
+  .error-state{color:var(--danger);}
+  .idle-summary{font-family:var(--mono); font-size:13px; color:var(--text); margin-bottom:14px; padding:10px 14px; background:var(--panel-2); border-radius:8px; border:1px solid var(--border);}
+  .idle-summary b{color:var(--good); font-size:15px;}
+  .idle-row{display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px;}
+  .idle-row:last-child{border-bottom:none;}
+  .idle-type-badge{font-family:var(--mono); font-size:10px; padding:3px 8px; border-radius:10px; background:var(--panel-2); color:var(--text-dim); flex-shrink:0; white-space:nowrap;}
+  .idle-id{font-family:var(--mono); font-size:11px; color:var(--text-dim); flex:1; word-break:break-all;}
+  .idle-detail{font-size:11px; color:var(--text-faint); flex:1;}
+  .idle-cost{font-family:var(--mono); font-size:13px; font-weight:700; color:var(--warn); flex-shrink:0;}
+
+  footer{
+    margin-top:44px; padding-top:24px; border-top:1px solid var(--border);
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;
+  }
+  .footer-brand{font-size:13px; color:var(--text-dim);}
+  .footer-brand b{color:var(--text); font-weight:700;}
+  .footer-links{display:flex; gap:16px; font-family:var(--mono); font-size:12px;}
+  .footer-links a{color:var(--purple); text-decoration:none;}
+  .footer-links a:hover{text-decoration:underline;}
+
+  @media (max-width:720px){
+    .hero{grid-template-columns:1fr;}
+    .meter-box{border-right:none; border-bottom:1px solid var(--border);}
+    .stat-group-row{grid-template-columns:repeat(2,1fr) !important;}
+    .stat{border-right:1px solid var(--border);}
+    .stat:nth-child(2n){border-right:none;}
+  }
+
+  .stat-group-row.c4{grid-template-columns:repeat(4,1fr);}
+  .stat-group-row.c3{grid-template-columns:repeat(3,1fr);}
+  .sev{font-family:var(--mono); font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap;}
+  .sev.critical{color:var(--danger); background:color-mix(in srgb, var(--danger) 12%, transparent);}
+  .sev.high{color:var(--warn); background:color-mix(in srgb, var(--warn) 14%, transparent);}
+  .sev.medium{color:var(--purple); background:color-mix(in srgb, var(--purple) 12%, transparent);}
+  .sev.low{color:var(--text-dim); background:var(--panel-2); border:1px solid var(--border);}
+  .sev.fixed{color:var(--good); background:color-mix(in srgb, var(--good) 12%, transparent);}
+  .nav-link{font-family:var(--mono); font-size:12px; font-weight:600; color:var(--text-dim); text-decoration:none; border:1px solid var(--border); border-radius:var(--radius); padding:8px 12px; background:var(--panel); white-space:nowrap;}
+  .nav-link:hover{color:var(--text);}
+  .fw-row{display:flex; gap:8px; align-items:center; padding:7px 0; border-top:1px solid var(--border); font-size:12px; color:var(--text-dim);}
+  .fw-row .nm{flex:1;} .fw-row .vl{font-family:var(--mono); color:var(--text);}
+  .fw-row .nt{font-size:11px; color:var(--text-faint);}
+  .dd-title{font-family:var(--mono); font-size:10px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.06em; margin:12px 0 6px; font-weight:600;}
+  .open-link{display:inline-block; margin-top:12px; font-family:var(--mono); font-size:12px; font-weight:600; color:var(--purple); text-decoration:none;}
+  .pillar-dim{opacity:.78; cursor:default;}
+  .pillar-dim:hover{transform:none; box-shadow:var(--shadow-sm); border-color:var(--border);}
+  .pillar-desc{font-size:13px; color:var(--text-dim); line-height:1.55; margin:12px 0 0;}
+  .disclaimer{font-family:var(--mono); font-size:11px; color:var(--text-faint); line-height:1.6; margin:18px 2px 0;}
+  .why{font-size:12px; color:var(--text-dim); line-height:1.5;}
+  .res-list{font-family:var(--mono); font-size:11px; color:var(--text-dim);}
+  .svc-card.expanded .drilldown{max-height:1400px;}
+  @media (max-width:720px){ .stat-group-row.c4{grid-template-columns:repeat(2,1fr);} .stat-group-row.c3{grid-template-columns:repeat(2,1fr);} }
+  .cost-tag{font-family:var(--mono); font-size:11px; font-weight:700; color:var(--warn); background:color-mix(in srgb, var(--warn) 14%, transparent); border-radius:10px; padding:2px 8px;}
+  .cost-pill{font-family:var(--mono); font-size:10px; font-weight:700; color:var(--warn); background:color-mix(in srgb, var(--warn) 14%, transparent); border-radius:10px; padding:2px 8px; white-space:nowrap;}
+  .howto{margin-top:2px;} .howto summary{font-family:var(--mono); font-size:11px; font-weight:600; color:var(--purple); cursor:pointer;} .howto[open] summary{margin-bottom:8px;}
+  .cost-note{font-size:12px; color:var(--text-dim); line-height:1.6; margin:16px 2px 0;}
+</style>
+</head>
+<body data-theme="light">
+
+<div class="topbar">
+  <div class="topbar-msg">⚡ <span>Series companion</span><span class="dim">— sample data from the AWS Security Best Practices series</span></div>
+</div>
+
+<header>
+  <div class="brand">
+    <div class="logo">&gt;_</div>
+    <div class="brand-text"><h1>12-week security series</h1></div>
+  </div>
+  <div class="header-controls">
+    <a class="nav-link" href="security-dashboard.html">Security dashboard</a>
+    <a class="nav-link" href="index.html">Overview</a>
+    <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="hero" style="grid-template-columns:1fr;">
+    <div class="stat-strip" id="statStrip" style="border-left:none;"></div>
+  </div>
+
+  <div class="section-label">Week by week — click a week to see what it covers</div>
+  <div class="service-grid" id="weekGrid"><div class="load-state">Loading…</div></div>
+  <p class="cost-note"><span class="cost-tag">$</span> Turning this on in your own AWS account will cost you money. AWS bills you for it. All other checks are free.</p>
+
+  <footer>
+    <div class="footer-brand">Built by <b>Anuradha Iyer</b> — Cloud / DevOps / AI Engineering</div>
+    <div class="footer-links">
+      <a href="https://linkedin.com/in/iyeranuradha" target="_blank" rel="noopener">LinkedIn</a>
+      <a href="https://github.com/AnuradhaVIyer" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </footer>
+</div>
+
+<script>
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDate = d => d ? new Date(d+'T00:00:00Z').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}) : '';
+const css = name => getComputedStyle(document.body).getPropertyValue(name).trim();
+const themeToggle = $('themeToggle');
+themeToggle.addEventListener('click', ()=>{
+  const next = document.body.getAttribute('data-theme')==='light' ? 'dark' : 'light';
+  document.body.setAttribute('data-theme', next);
+  themeToggle.textContent = next==='light' ? '🌙' : '☀️';
+  if(typeof rerender==='function') rerender();
+});
+document.addEventListener('click', e=>{
+  const card = e.target.closest('[data-expand]');
+  if(card && !e.target.closest('a') && !e.target.closest('details')) card.classList.toggle('expanded');
+});
+
+const DATA_DIR = './data/security';
+const SEV = {critical:'Critical', high:'High', medium:'Medium', low:'Low'};
+let D = null, cat = {};
+
+async function getJSON(path){ const r = await fetch(path,{cache:'no-cache'}); if(!r.ok) throw new Error(path+' returned '+r.status); return r.json(); }
+
+function statCard(lbl, num, delta, color){
+  return `<div class="stat"><div class="lbl">${lbl}</div><div class="num"${color?` style="color:${color}"`:''}>${num}</div><div class="delta flat">· ${esc(delta)}</div></div>`;
+}
+
+// Checks that cost money in AWS once you turn them on (edit this list to change the $ markers)
+const COSTS = new Set([10, 15, 16, 19, 24, 27, 28, 30, 31]);
+const COST_TAG = '<span class="cost-tag" title="Costs money in AWS if you turn it on">$</span>';
+
+// LinkedIn post for each week (edit here)
+const POSTS = {
+  1: 'https://lnkd.in/p/dsirduSx',
+  2: 'https://lnkd.in/p/dt2D9CkD',
+  3: 'https://lnkd.in/p/dfAcDB9n',
+  4: 'https://lnkd.in/p/dmg6h4zE',
+  5: 'https://lnkd.in/p/dbbgXu9d',
+  6: 'https://lnkd.in/p/dmjGg4Tu',
+  7: 'https://lnkd.in/p/dYkqTra5',
+  8: 'https://lnkd.in/p/dCX2rBSR',
+  9: 'https://lnkd.in/p/d6UYY4N5',
+  10: 'https://lnkd.in/p/dPNFABKE',
+  11: 'https://lnkd.in/p/dFmAH32d',
+  12: 'https://lnkd.in/p/dY_DJJXt'
+};
+
+function render(){
+  const series = D.series || [];
+  const total = D.catalog.length;
+  const seen = new Set();
+  const costTotal = D.catalog.filter(c=>COSTS.has(c.id)).length;
+  $('statStrip').innerHTML = `
+    <div class="stat-group">
+      <div class="stat-group-label">Coverage of the series</div>
+      <div class="stat-group-row c3">
+        ${statCard('Checks', total, 'covered across the series')}
+        ${statCard('Weeks', series.length, 'one post each week')}
+        ${statCard('Checks that cost money', costTotal, 'marked with $ if you turn them on')}
+      </div>
+    </div>`;
+  $('weekGrid').innerHTML = series.map(w=>{
+    const fresh = w.check_ids.filter(id=>!seen.has(id));
+    w.check_ids.forEach(id=>seen.add(id));
+    const rows = w.check_ids.map(id=>{
+      const c = cat[id];
+      const again = fresh.includes(id) ? '' : '<div class="res-list">Also covered in an earlier week</div>';
+      const steps = (c.fix||[]).map(t=>`<li>${esc(t)}</li>`).join('');
+      const howto = `<details class="howto"><summary>How to do it</summary><div class="why">${esc(c.why||'')}</div><ol class="why" style="margin:8px 0 0 18px;line-height:1.7;">${steps}</ol></details>`;
+      return `<div class="fw-row" style="flex-wrap:wrap;"><span class="sev ${c.severity}">${SEV[c.severity]}</span><span class="nm">${esc(c.name)}${again}</span><span class="vl">${COSTS.has(id)?COST_TAG:''}</span><div style="flex-basis:100%;">${howto}</div></div>`;
+    }).join('');
+    const paid = w.check_ids.filter(id=>COSTS.has(id)).length;
+    const pill = paid ? `<span class="cost-pill">$ ${paid} with a cost</span>` : '<span class="sev fixed">All free</span>';
+    return `<div class="svc-card" data-expand="1">
+      <div class="svc-top"><div><div class="svc-name">Week ${w.week} · ${esc(w.title)}</div><div class="svc-code">${w.check_ids.length} check${w.check_ids.length===1?'':'s'} · running total ${seen.size} of ${total}</div></div>${pill}<div class="svc-caret">▶</div></div>
+      <div class="drilldown">${POSTS[w.week]?`<div class="fw-row"><a class="open-link" style="margin-top:0;" href="${POSTS[w.week]}" target="_blank" rel="noopener">Read the Week ${w.week} post on LinkedIn →</a></div>`:''}${rows}</div>
+    </div>`;
+  }).join('');
+}
+function rerender(){}
+
+(async ()=>{
+  try{
+    const m = await getJSON(DATA_DIR+'/security-manifest.json');
+    D = await getJSON(DATA_DIR+'/'+m.latest);
+    D.catalog.forEach(c=>cat[c.id]=c);
+    render();
+  }catch(e){
+    $('weekGrid').innerHTML = `<div class="error-state">Could not load the scan data. Serve this page from a web server with the data folder beside it.<br><br>${esc(e.message)}</div>`;
+  }
+})();
+</script>
+</body>
+</html>

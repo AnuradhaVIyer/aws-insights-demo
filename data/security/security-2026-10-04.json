@@ -1,28 +1,34 @@
 {
  "schema": "1.0",
+ "scoring_version": 2,
  "generated_at": "2026-10-04T02:00:00+00:00",
  "scan_date": "2026-10-04",
  "customer": "Sample Company",
  "summary": {
-  "score": 69,
-  "open": 8,
+  "score": 65,
+  "open": 13,
   "critical": 1,
-  "high": 1,
-  "medium": 3,
+  "high": 3,
+  "medium": 6,
   "low": 3,
   "fixed_recent": 6,
-  "checks_not_run": 0
+  "checks_not_run": 0,
+  "not_applicable": 0
  },
  "frameworks": [
   {
    "key": "HIPAA",
    "name": "HIPAA-aligned technical checks",
-   "score": 79,
-   "checks_total": 16,
-   "checks_clean": 12,
+   "score": 73,
+   "checks_total": 25,
+   "checks_clean": 17,
    "failing": [
     {
      "check_id": 6,
+     "accounts": 1
+    },
+    {
+     "check_id": 26,
      "accounts": 1
     },
     {
@@ -34,6 +40,18 @@
      "accounts": 1
     },
     {
+     "check_id": 24,
+     "accounts": 1
+    },
+    {
+     "check_id": 28,
+     "accounts": 1
+    },
+    {
+     "check_id": 31,
+     "accounts": 1
+    },
+    {
      "check_id": 19,
      "accounts": 1
     }
@@ -42,9 +60,9 @@
   {
    "key": "CIS",
    "name": "CIS AWS Foundations",
-   "score": 68,
-   "checks_total": 14,
-   "checks_clean": 9,
+   "score": 69,
+   "checks_total": 18,
+   "checks_clean": 12,
    "failing": [
     {
      "check_id": 6,
@@ -52,6 +70,10 @@
     },
     {
      "check_id": 8,
+     "accounts": 1
+    },
+    {
+     "check_id": 22,
      "accounts": 1
     },
     {
@@ -71,9 +93,9 @@
   {
    "key": "SOC2",
    "name": "SOC 2",
-   "score": 67,
-   "checks_total": 14,
-   "checks_clean": 8,
+   "score": 63,
+   "checks_total": 25,
+   "checks_clean": 14,
    "failing": [
     {
      "check_id": 6,
@@ -84,11 +106,31 @@
      "accounts": 1
     },
     {
+     "check_id": 22,
+     "accounts": 1
+    },
+    {
+     "check_id": 26,
+     "accounts": 1
+    },
+    {
      "check_id": 3,
      "accounts": 1
     },
     {
      "check_id": 17,
+     "accounts": 1
+    },
+    {
+     "check_id": 24,
+     "accounts": 1
+    },
+    {
+     "check_id": 28,
+     "accounts": 1
+    },
+    {
+     "check_id": 31,
      "accounts": 1
     },
     {
@@ -106,11 +148,11 @@
   {
    "id": "123456780001",
    "name": "acme-prod",
-   "score": 69,
-   "open": 8,
+   "score": 65,
+   "open": 13,
    "critical": 1,
-   "high": 1,
-   "medium": 3,
+   "high": 3,
+   "medium": 6,
    "low": 3
   }
  ],
@@ -408,9 +450,9 @@
     "HIPAA",
     "SOC2"
    ],
-   "why": "Short retention can leave gaps for investigations and audits.",
+   "why": "Log groups kept for less than the required minimum (90 days, or 365 days when HIPAA is in scope) leave gaps for investigations and audits.",
    "fix": [
-    "Set log group retention to at least 365 days",
+    "Set log group retention to at least 90 days, or 365 days when HIPAA is in scope",
     "Archive older logs to S3"
    ]
   },
@@ -426,6 +468,182 @@
    "fix": [
     "Create a monthly budget",
     "Add alerts at 80 and 100 percent"
+   ]
+  },
+  {
+   "id": 21,
+   "name": "Root account has access keys",
+   "severity": "critical",
+   "service": "IAM",
+   "frameworks": [
+    "HIPAA",
+    "CIS",
+    "SOC2"
+   ],
+   "why": "Access keys for the root user give unrestricted, long-lived access to the whole account.",
+   "fix": [
+    "Sign in as the root user",
+    "Delete every root access key",
+    "Use IAM roles or SSO for programmatic access"
+   ]
+  },
+  {
+   "id": 22,
+   "name": "EC2 instances do not require IMDSv2",
+   "severity": "high",
+   "service": "EC2",
+   "frameworks": [
+    "CIS",
+    "SOC2"
+   ],
+   "why": "Instances that still allow IMDSv1 can have their role credentials stolen through server-side request forgery.",
+   "fix": [
+    "Set the instance metadata option HttpTokens to required",
+    "Set the account default to require IMDSv2",
+    "Check that applications use IMDSv2 first"
+   ]
+  },
+  {
+   "id": 23,
+   "name": "EC2 instances without an IAM role",
+   "severity": "low",
+   "service": "EC2",
+   "frameworks": [
+    "CIS",
+    "SOC2"
+   ],
+   "why": "Instances without a role tend to use stored access keys, which are harder to protect and rotate.",
+   "fix": [
+    "Create a role with only the permissions the workload needs",
+    "Attach it as the instance profile",
+    "Remove any access keys stored on the instance"
+   ]
+  },
+  {
+   "id": 24,
+   "name": "DynamoDB tables without point-in-time recovery",
+   "severity": "medium",
+   "service": "DynamoDB",
+   "frameworks": [
+    "HIPAA",
+    "SOC2"
+   ],
+   "why": "Without point-in-time recovery, an accidental delete or bad write cannot be rolled back.",
+   "fix": [
+    "Turn on point-in-time recovery for each table",
+    "Set a backup plan for tables that need longer retention"
+   ]
+  },
+  {
+   "id": 25,
+   "name": "Lambda functions with wildcard permissions",
+   "severity": "high",
+   "service": "Lambda",
+   "frameworks": [
+    "HIPAA",
+    "SOC2"
+   ],
+   "why": "A function role that can do everything turns any code flaw into full account access.",
+   "fix": [
+    "Find the function's execution role",
+    "Replace administrator or wildcard policies with scoped permissions",
+    "Use IAM Access Analyzer to see which actions are actually used"
+   ]
+  },
+  {
+   "id": 26,
+   "name": "Lambda function URLs without authentication",
+   "severity": "high",
+   "service": "Lambda",
+   "frameworks": [
+    "HIPAA",
+    "SOC2"
+   ],
+   "why": "A function URL with no authentication can be called by anyone on the internet.",
+   "fix": [
+    "Switch the URL auth type to AWS_IAM",
+    "Or put the function behind API Gateway with an authorizer",
+    "Delete URLs that are no longer needed"
+   ]
+  },
+  {
+   "id": 27,
+   "name": "AWS Config does not record all resource types",
+   "severity": "medium",
+   "service": "Config",
+   "frameworks": [
+    "HIPAA",
+    "CIS",
+    "SOC2"
+   ],
+   "why": "A recorder that skips resource types leaves blind spots in change history and compliance checks.",
+   "fix": [
+    "Edit the recorder",
+    "Choose to record all supported resource types"
+   ]
+  },
+  {
+   "id": 28,
+   "name": "GuardDuty is not enabled",
+   "severity": "medium",
+   "service": "GuardDuty",
+   "frameworks": [
+    "HIPAA",
+    "SOC2"
+   ],
+   "why": "Without GuardDuty, suspicious activity such as credential misuse or crypto mining is not detected.",
+   "fix": [
+    "Enable GuardDuty in each region in use",
+    "Send findings to an alert channel",
+    "Note that GuardDuty is a paid service with a free trial"
+   ]
+  },
+  {
+   "id": 29,
+   "name": "GuardDuty has open high-severity findings",
+   "severity": "high",
+   "service": "GuardDuty",
+   "frameworks": [
+    "HIPAA",
+    "SOC2"
+   ],
+   "why": "Unresolved high-severity findings indicate active or likely compromise.",
+   "fix": [
+    "Open each finding in the GuardDuty console",
+    "Investigate and contain the affected resource",
+    "Archive the finding once resolved"
+   ]
+  },
+  {
+   "id": 30,
+   "name": "Security Hub is not enabled",
+   "severity": "medium",
+   "service": "Security Hub",
+   "frameworks": [
+    "HIPAA",
+    "SOC2"
+   ],
+   "why": "Security Hub gathers findings from several services and runs ongoing standards checks in one place.",
+   "fix": [
+    "Enable Security Hub in each region in use",
+    "Choose the standards that apply",
+    "Note that Security Hub and AWS Config are paid services"
+   ]
+  },
+  {
+   "id": 31,
+   "name": "Public entry points without a web application firewall",
+   "severity": "medium",
+   "service": "WAF",
+   "frameworks": [
+    "HIPAA",
+    "SOC2"
+   ],
+   "why": "Internet-facing load balancers and CloudFront distributions without WAF are exposed to common web attacks.",
+   "fix": [
+    "Create a web ACL with the AWS managed rule groups",
+    "Associate it with each public load balancer or distribution",
+    "Start in count mode to check for false positives"
    ]
   }
  ],
@@ -443,6 +661,24 @@
    "fixed_on": null
   },
   {
+   "check_id": 22,
+   "account_id": "123456780001",
+   "status": "open",
+   "resources": 3,
+   "resource_ids": [
+    "us-east-1:i-0a1b2c3d4e5f-01",
+    "eu-central-1:i-0a1b2c3d4e5f-02",
+    "ap-south-1:i-0a1b2c3d4e5f-03"
+   ],
+   "regions": [
+    "ap-south-1",
+    "eu-central-1",
+    "us-east-1"
+   ],
+   "first_seen": "2026-08-30",
+   "fixed_on": null
+  },
+  {
    "check_id": 8,
    "account_id": "123456780001",
    "status": "open",
@@ -453,6 +689,20 @@
    ],
    "regions": [
     "eu-central-1",
+    "us-east-1"
+   ],
+   "first_seen": "2026-08-02",
+   "fixed_on": null
+  },
+  {
+   "check_id": 26,
+   "account_id": "123456780001",
+   "status": "open",
+   "resources": 1,
+   "resource_ids": [
+    "us-east-1:orders-webhook-01"
+   ],
+   "regions": [
     "us-east-1"
    ],
    "first_seen": "2026-08-02",
@@ -502,6 +752,50 @@
    ],
    "regions": [],
    "first_seen": "2026-08-02",
+   "fixed_on": null
+  },
+  {
+   "check_id": 24,
+   "account_id": "123456780001",
+   "status": "open",
+   "resources": 2,
+   "resource_ids": [
+    "us-east-1:orders-table-01",
+    "eu-central-1:orders-table-02"
+   ],
+   "regions": [
+    "eu-central-1",
+    "us-east-1"
+   ],
+   "first_seen": "2026-08-16",
+   "fixed_on": null
+  },
+  {
+   "check_id": 28,
+   "account_id": "123456780001",
+   "status": "open",
+   "resources": 1,
+   "resource_ids": [
+    "eu-central-1"
+   ],
+   "regions": [
+    "eu-central-1"
+   ],
+   "first_seen": "2026-09-20",
+   "fixed_on": null
+  },
+  {
+   "check_id": 31,
+   "account_id": "123456780001",
+   "status": "open",
+   "resources": 1,
+   "resource_ids": [
+    "us-east-1:acme-public-alb-01"
+   ],
+   "regions": [
+    "us-east-1"
+   ],
+   "first_seen": "2026-08-30",
    "fixed_on": null
   },
   {
@@ -604,5 +898,168 @@
    "fixed_on": "2026-10-02"
   }
  ],
- "errors": []
+ "errors": [],
+ "series": [
+  {
+   "week": 1,
+   "title": "New AWS Account Setup",
+   "check_ids": [
+    1,
+    2,
+    20,
+    21
+   ],
+   "gaps": [
+    "AWS Organizations and service control policies"
+   ]
+  },
+  {
+   "week": 2,
+   "title": "S3 Security",
+   "check_ids": [
+    6,
+    7,
+    17
+   ],
+   "gaps": [
+    "Versioning",
+    "Access logging and Object Lock"
+   ]
+  },
+  {
+   "week": 3,
+   "title": "IAM Deep Dive",
+   "check_ids": [
+    3,
+    4,
+    5,
+    18
+   ],
+   "gaps": [
+    "Permission boundaries",
+    "Service control policies",
+    "IAM Access Analyzer"
+   ]
+  },
+  {
+   "week": 4,
+   "title": "VPC and Networking",
+   "check_ids": [
+    8,
+    12,
+    15
+   ],
+   "gaps": [
+    "Network ACLs",
+    "Public and private subnet layout",
+    "NAT Gateway",
+    "VPC endpoints and PrivateLink"
+   ]
+  },
+  {
+   "week": 5,
+   "title": "EC2 Security",
+   "check_ids": [
+    8,
+    22,
+    23
+   ],
+   "gaps": [
+    "Key pair handling",
+    "Patch management with Systems Manager",
+    "AMI hardening"
+   ]
+  },
+  {
+   "week": 6,
+   "title": "Databases and Secrets Manager",
+   "check_ids": [
+    9,
+    11
+   ],
+   "gaps": [
+    "RDS encryption in transit (SSL)",
+    "Secrets Manager rotation",
+    "Least-privilege database users"
+   ]
+  },
+  {
+   "week": 7,
+   "title": "DynamoDB Security",
+   "check_ids": [
+    14,
+    24
+   ],
+   "gaps": [
+    "AWS-owned versus customer-managed keys",
+    "LeadingKeys row-level access",
+    "VPC endpoints for DynamoDB"
+   ]
+  },
+  {
+   "week": 8,
+   "title": "Lambda Security",
+   "check_ids": [
+    25,
+    26
+   ],
+   "gaps": [
+    "Environment variable encryption",
+    "VPC configuration",
+    "Code signing",
+    "X-Ray tracing"
+   ]
+  },
+  {
+   "week": 9,
+   "title": "CloudWatch and Logging",
+   "check_ids": [
+    10,
+    13,
+    19
+   ],
+   "gaps": [
+    "Metric filters and alarms",
+    "Anomaly detection"
+   ]
+  },
+  {
+   "week": 10,
+   "title": "AWS Config and Compliance",
+   "check_ids": [
+    16,
+    27
+   ],
+   "gaps": [
+    "Managed rules",
+    "Conformance packs",
+    "Automated remediation"
+   ]
+  },
+  {
+   "week": 11,
+   "title": "GuardDuty and Threat Detection",
+   "check_ids": [
+    28,
+    29
+   ],
+   "gaps": [
+    "Automated response with EventBridge",
+    "Custom threat intelligence lists"
+   ]
+  },
+  {
+   "week": 12,
+   "title": "Security Hub and WAF",
+   "check_ids": [
+    30,
+    31
+   ],
+   "gaps": [
+    "Security Hub standards enabled",
+    "Shield Advanced",
+    "Firewall Manager"
+   ]
+  }
+ ]
 }
