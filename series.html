@@ -226,16 +226,12 @@
   .res-list{font-family:var(--mono); font-size:11px; color:var(--text-dim);}
   .svc-card.expanded .drilldown{max-height:1400px;}
   @media (max-width:720px){ .stat-group-row.c4{grid-template-columns:repeat(2,1fr);} .stat-group-row.c3{grid-template-columns:repeat(2,1fr);} }
-  .cost-tag{font-family:var(--mono); font-size:11px; font-weight:700; color:var(--warn); background:color-mix(in srgb, var(--warn) 14%, transparent); border-radius:10px; padding:2px 8px;}
-  .cost-pill{font-family:var(--mono); font-size:10px; font-weight:700; color:var(--warn); background:color-mix(in srgb, var(--warn) 14%, transparent); border-radius:10px; padding:2px 8px; white-space:nowrap;}
-  .howto{margin-top:2px;} .howto summary{font-family:var(--mono); font-size:11px; font-weight:600; color:var(--purple); cursor:pointer;} .howto[open] summary{margin-bottom:8px;}
-  .cost-note{font-size:12px; color:var(--text-dim); line-height:1.6; margin:16px 2px 0;}
 </style>
 </head>
 <body data-theme="light">
 
 <div class="topbar">
-  <div class="topbar-msg">⚡ <span>Series companion</span><span class="dim">— sample data from the AWS Security Best Practices series</span></div>
+  <div class="topbar-msg">⚡ <span>Series companion</span><span class="dim">— from the AWS Security Best Practices series</span></div>
 </div>
 
 <header>
@@ -256,9 +252,8 @@
     <div class="stat-strip" id="statStrip" style="border-left:none;"></div>
   </div>
 
-  <div class="section-label">Week by week — click a week to see what it covers</div>
+  <div class="section-label">Week by week — click a week to see its checks</div>
   <div class="service-grid" id="weekGrid"><div class="load-state">Loading…</div></div>
-  <p class="cost-note"><span class="cost-tag">$</span> Turning this on in your own AWS account will cost you money. AWS bills you for it. All other checks are free.</p>
 
   <footer>
     <div class="footer-brand">Built by <b>Anuradha Iyer</b> — Cloud / DevOps / AI Engineering</div>
@@ -284,7 +279,7 @@ themeToggle.addEventListener('click', ()=>{
 });
 document.addEventListener('click', e=>{
   const card = e.target.closest('[data-expand]');
-  if(card && !e.target.closest('a') && !e.target.closest('details')) card.classList.toggle('expanded');
+  if(card && !e.target.closest('a')) card.classList.toggle('expanded');
 });
 
 const DATA_DIR = './data/security';
@@ -297,55 +292,35 @@ function statCard(lbl, num, delta, color){
   return `<div class="stat"><div class="lbl">${lbl}</div><div class="num"${color?` style="color:${color}"`:''}>${num}</div><div class="delta flat">· ${esc(delta)}</div></div>`;
 }
 
-// Checks that cost money in AWS once you turn them on (edit this list to change the $ markers)
-const COSTS = new Set([10, 15, 16, 19, 24, 27, 28, 30, 31]);
-const COST_TAG = '<span class="cost-tag" title="Costs money in AWS if you turn it on">$</span>';
-
-// LinkedIn post for each week (edit here)
-const POSTS = {
-  1: 'https://lnkd.in/p/dsirduSx',
-  2: 'https://lnkd.in/p/dt2D9CkD',
-  3: 'https://lnkd.in/p/dfAcDB9n',
-  4: 'https://lnkd.in/p/dmg6h4zE',
-  5: 'https://lnkd.in/p/dbbgXu9d',
-  6: 'https://lnkd.in/p/dmjGg4Tu',
-  7: 'https://lnkd.in/p/dYkqTra5',
-  8: 'https://lnkd.in/p/dCX2rBSR',
-  9: 'https://lnkd.in/p/d6UYY4N5',
-  10: 'https://lnkd.in/p/dPNFABKE',
-  11: 'https://lnkd.in/p/dFmAH32d',
-  12: 'https://lnkd.in/p/dY_DJJXt'
-};
-
 function render(){
   const series = D.series || [];
   const total = D.catalog.length;
-  const seen = new Set();
-  const costTotal = D.catalog.filter(c=>COSTS.has(c.id)).length;
+  const gapCount = series.reduce((n,w)=>n+(w.gaps||[]).length, 0);
+  const open = D.findings.filter(f=>f.status==='open').length;
   $('statStrip').innerHTML = `
     <div class="stat-group">
       <div class="stat-group-label">Coverage of the series</div>
-      <div class="stat-group-row c3">
-        ${statCard('Checks', total, 'covered across the series')}
-        ${statCard('Weeks', series.length, 'one post each week')}
-        ${statCard('Checks that cost money', costTotal, 'marked with $ if you turn them on')}
+      <div class="stat-group-row c4">
+        ${statCard('Checks', total, 'across 12 weeks')}
+        ${statCard('Weeks with checks', `${series.filter(w=>w.check_ids.length).length} of ${series.length}`, 'every week has dashboard checks')}
+        ${statCard('Open findings', open, 'in the sample account', open?'var(--warn)':'')}
+        ${statCard('Topics not checked yet', gapCount, 'in the posts, no dashboard check')}
       </div>
     </div>`;
   $('weekGrid').innerHTML = series.map(w=>{
-    const fresh = w.check_ids.filter(id=>!seen.has(id));
-    w.check_ids.forEach(id=>seen.add(id));
     const rows = w.check_ids.map(id=>{
       const c = cat[id];
-      const again = fresh.includes(id) ? '' : '<div class="res-list">Also covered in an earlier week</div>';
-      const steps = (c.fix||[]).map(t=>`<li>${esc(t)}</li>`).join('');
-      const howto = `<details class="howto"><summary>How to do it</summary><div class="why">${esc(c.why||'')}</div><ol class="why" style="margin:8px 0 0 18px;line-height:1.7;">${steps}</ol></details>`;
-      return `<div class="fw-row" style="flex-wrap:wrap;"><span class="sev ${c.severity}">${SEV[c.severity]}</span><span class="nm">${esc(c.name)}${again}</span><span class="vl">${COSTS.has(id)?COST_TAG:''}</span><div style="flex-basis:100%;">${howto}</div></div>`;
+      const f = D.findings.find(x=>x.check_id===id && x.status==='open');
+      const state = f ? `Open · ${f.resources} resource${f.resources===1?'':'s'}` : 'Passing';
+      const where = f && f.regions && f.regions.length ? `<div class="res-list">${esc(f.regions.join(', '))}</div>` : '';
+      return `<div class="fw-row"><span class="sev ${c.severity}">${SEV[c.severity]}</span><span class="nm">${esc(c.name)}${where}</span><span class="vl">${state}</span></div>`;
     }).join('');
-    const paid = w.check_ids.filter(id=>COSTS.has(id)).length;
-    const pill = paid ? `<span class="cost-pill">$ ${paid} with a cost</span>` : '<span class="sev fixed">All free</span>';
+    const openCount = w.check_ids.filter(id=>D.findings.some(x=>x.check_id===id && x.status==='open')).length;
+    const pill = openCount ? `<span class="sev high">${openCount} open</span>` : '<span class="sev fixed">All passing</span>';
+    const gaps = (w.gaps||[]).length ? `<div class="dd-title">In the post, not yet checked by the dashboard</div><ul class="why" style="margin:0 0 0 18px;line-height:1.7;">${w.gaps.map(g=>`<li>${esc(g)}</li>`).join('')}</ul>` : '';
     return `<div class="svc-card" data-expand="1">
-      <div class="svc-top"><div><div class="svc-name">Week ${w.week} · ${esc(w.title)}</div><div class="svc-code">${w.check_ids.length} check${w.check_ids.length===1?'':'s'} · running total ${seen.size} of ${total}</div></div>${pill}<div class="svc-caret">▶</div></div>
-      <div class="drilldown">${POSTS[w.week]?`<div class="fw-row"><a class="open-link" style="margin-top:0;" href="${POSTS[w.week]}" target="_blank" rel="noopener">Read the Week ${w.week} post on LinkedIn →</a></div>`:''}${rows}</div>
+      <div class="svc-top"><div><div class="svc-name">Week ${w.week} · ${esc(w.title)}</div><div class="svc-code">${w.check_ids.length} check${w.check_ids.length===1?'':'s'}</div></div>${pill}<div class="svc-caret">▶</div></div>
+      <div class="drilldown">${rows}${gaps}</div>
     </div>`;
   }).join('');
 }
