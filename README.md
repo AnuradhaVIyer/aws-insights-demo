@@ -9,8 +9,8 @@ Sample-data demo of dashboards organised around the six pillars of the AWS Well-
 
 | Pillar | Status | Page |
 |---|---|---|
-| Cost Optimization | Available | `cost-dashboard.html` |
 | Security | Available | `security-dashboard.html` |
+| Cost Optimization | In Progress | `cost-dashboard.html` |
 | Reliability | Planned | |
 | Operational Excellence | Planned | |
 | Performance Efficiency | Planned | |
