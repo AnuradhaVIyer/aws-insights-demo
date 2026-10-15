@@ -264,6 +264,7 @@
 
   <div class="section-label">Well-Architected pillars — click an enabled pillar for details</div>
   <div class="service-grid" id="pillarGrid"><div class="load-state">Loading pillar summaries…</div></div>
+  <p class="disclaimer"><a class="open-link" style="margin-top:0;" href="series.html">12-week series companion →</a></p>
 
   <p class="disclaimer">The overall score is the simple average of the enabled pillars. It is not an official AWS Well-Architected Review. Pillar names follow the AWS Well-Architected Framework. AWS Insights is an independent tool and is not provided or endorsed by AWS.</p>
 
@@ -296,10 +297,10 @@ document.addEventListener('click', e=>{
 
 const DATA_DIR = './data';
 const PILLARS = [
-  {id:'cost', folder:'cost', title:'Cost Optimization', sub:'Cost dashboard', icon:'💰', bg:'#EDE9FE', fg:'#7C3AED', built:true,
-   desc:'Spend by service, region, and tag. Forecast, budget meter, year-over-year comparison, and idle resources.'},
   {id:'security', folder:'security', title:'Security', sub:'Security and compliance', icon:'🛡️', bg:'#DBEAFE', fg:'#2563EB', built:true,
    desc:'Thirty-one configuration checks with severity scoring and HIPAA-aligned, CIS, and SOC 2 views.'},
+  {id:'cost', folder:'cost', title:'Cost Optimization', sub:'Cost dashboard', icon:'💰', bg:'#EDE9FE', fg:'#7C3AED', built:false, soon:true,
+   desc:'Spend by service, region, and tag. Forecast, budget meter, year-over-year comparison, and idle resources.'},
   {id:'reliability', folder:'reliability', title:'Reliability', sub:'Backups and resilience', icon:'♻️', bg:'#DCFCE7', fg:'#16A34A', built:false,
    desc:'Backups switched on, databases without Multi-AZ, missing recent snapshots, and single points of failure.'},
   {id:'operations', folder:'operations', title:'Operational Excellence', sub:'Operations and governance', icon:'⚙️', bg:'#FEF3C7', fg:'#D97706', built:false,
@@ -398,7 +399,7 @@ function renderGrid(){
     const s = SUMMARIES[p.id];
     const badge = `<div class="svc-badge" style="background:${p.bg};color:${p.fg};">${p.icon}</div>`;
     if(!s){
-      const label = p.built ? 'Not enabled' : 'Planned';
+      const label = p.soon ? 'Coming next' : (p.built ? 'Not enabled' : 'Planned');
       return `<div class="svc-card pillar-dim"><div class="svc-top"><div class="svc-icon-row">${badge}
         <div><div class="svc-name">${esc(p.title)}</div><div class="svc-code">${esc(p.sub)}</div></div></div>
         <span class="sev low">${label}</span></div><p class="pillar-desc">${esc(p.desc)}</p></div>`;
